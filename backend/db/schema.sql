@@ -1,5 +1,5 @@
 -- VIZO database schema (PostgreSQL / Amazon RDS)
--- Run with: psql "$DATABASE_URL" -f db/schema.sql
+-- Run with: npm run db:migrate (safe to re-run)
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto; -- for gen_random_uuid()
 
@@ -15,10 +15,22 @@ CREATE TABLE IF NOT EXISTS users (
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TYPE listing_type AS ENUM ('direct', 'auction');
-CREATE TYPE listing_condition AS ENUM ('new', 'used-excellent', 'used-good');
-CREATE TYPE listing_status AS ENUM ('active', 'sold', 'ended', 'draft');
-CREATE TYPE listing_category AS ENUM ('furniture', 'electronics', 'books', 'plants', 'other');
+DO $$ BEGIN
+  CREATE TYPE listing_type AS ENUM ('direct', 'auction');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE listing_condition AS ENUM ('new', 'used-excellent', 'used-good');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE listing_status AS ENUM ('active', 'sold', 'ended', 'draft');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE listing_category AS ENUM ('furniture', 'electronics', 'books', 'plants', 'other');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS listings (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -72,7 +84,10 @@ CREATE TABLE IF NOT EXISTS messages (
 
 CREATE INDEX IF NOT EXISTS idx_messages_listing ON messages(listing_id, created_at);
 
-CREATE TYPE order_status AS ENUM ('pending_pickup', 'ready_for_pickup', 'shipped', 'completed', 'cancelled');
+DO $$ BEGIN
+  CREATE TYPE order_status AS ENUM ('pending_pickup', 'ready_for_pickup', 'shipped', 'completed', 'cancelled');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS orders (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -90,7 +105,10 @@ CREATE TABLE IF NOT EXISTS orders (
 CREATE INDEX IF NOT EXISTS idx_orders_buyer ON orders(buyer_id);
 CREATE INDEX IF NOT EXISTS idx_orders_seller ON orders(seller_id);
 
-CREATE TYPE notification_type AS ENUM ('new_bid', 'sold', 'message', 'outbid', 'listing_ending');
+DO $$ BEGIN
+  CREATE TYPE notification_type AS ENUM ('new_bid', 'sold', 'message', 'outbid', 'listing_ending');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS notifications (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),

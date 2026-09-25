@@ -108,10 +108,14 @@ DATABASE_URL="postgres://<username>:<password>@<endpoint>:5432/vizo" \
   npm run db:migrate
 ```
 
-That runs `db/schema.sql` against RDS via `psql`, the same file used for
-local development — no separate "prod schema" to maintain. If `psql` isn't
-installed locally, `brew install libpq && brew link --force libpq` (macOS)
-gets you the client without a full Postgres server.
+That applies `db/schema.sql` to RDS using the app's own `pg` driver (see
+`src/db/migrate.ts`), the same file used for local development — no separate
+"prod schema" to maintain, and no `psql` client to install. The schema is
+idempotent, so re-running it is safe.
+
+Once RDS is locked down to a private subnet, run migrations from wherever the
+backend runs instead of your laptop: after `npm run build`, use
+`npm run db:migrate:prod` (plain `node`, no dev dependencies needed).
 
 ## 7. Deploying the backend itself
 
