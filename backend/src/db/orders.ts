@@ -15,6 +15,7 @@ export interface OrderRow {
   pickup_location: string | null;
   pickup_time: string | null;
   created_at: Date;
+  review_rating: number | null;
 }
 
 const ORDER_SELECT = `
@@ -23,11 +24,13 @@ const ORDER_SELECT = `
     l.title AS listing_title,
     (CASE WHEN array_length(l.images, 1) > 0 THEN l.images[1] ELSE NULL END) AS listing_image,
     buyer.name AS buyer_name,
-    seller.name AS seller_name
+    seller.name AS seller_name,
+    r.rating AS review_rating
   FROM orders o
   JOIN listings l ON l.id = o.listing_id
   JOIN users buyer ON buyer.id = o.buyer_id
   JOIN users seller ON seller.id = o.seller_id
+  LEFT JOIN seller_reviews r ON r.order_id = o.id
 `;
 
 export function toApiOrder(row: OrderRow) {
@@ -46,6 +49,7 @@ export function toApiOrder(row: OrderRow) {
     pickupLocation: row.pickup_location ?? undefined,
     pickupTime: row.pickup_time ?? undefined,
     createdAt: row.created_at.toISOString(),
+    reviewRating: row.review_rating ?? undefined,
   };
 }
 
@@ -146,4 +150,31 @@ export async function completeOrder(
     return { ok: false, status: 403, reason: "Only the buyer or seller can update this order" };
   }
   return { ok: false, status: 409, reason: `This order is already ${order.status}` };
+}
+
+// Lets the buyer rate the seller once the order is completed. The UNIQUE
+// order_id constraint makes ON CONFLICT the one-review-per-order guard.
+export async function reviewOrder(input: {
+  orderId: string;
+  userId: string;
+  rating: number;
+  comment?: string;
+}): Promise<{ ok: true } | { ok: false; status: 403 | 404 | 409; reason: string }> {
+  const order = await findOrderById(input.orderId);
+  if (!order) return { ok: false, status: 404, reason: "Order not found" };
+  if (order.buyer_id !== input.userId) {
+    return { ok: false, status: 403, reason: "Only the buyer can rate this seller" };
+  }
+  if (order.status !== "completed") {
+    return { ok: false, status: 409, reason: "You can rate the seller once the order is delivered" };
+  }
+
+  const { rowCount } = await pool.query(
+    `INSERT INTO seller_reviews (order_id, seller_id, buyer_id, rating, comment)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (order_id) DO NOTHING`,
+    [order.id, order.seller_id, order.buyer_id, input.rating, input.comment ?? null]
+  );
+  if (!rowCount) return { ok: false, status: 409, reason: "You already rated this order" };
+  return { ok: true };
 }

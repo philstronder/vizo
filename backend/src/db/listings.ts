@@ -22,6 +22,8 @@ export interface ListingRow {
   auction_ends_at: Date | null;
   created_at: Date;
   bid_count: string; // aggregate count() comes back as text
+  seller_rating: string | null; // avg() is numeric, also text; null with no reviews
+  seller_review_count: string;
 }
 
 const LISTING_SELECT = `
@@ -32,7 +34,9 @@ const LISTING_SELECT = `
     u.building_name AS seller_building_name,
     u.verified AS seller_verified,
     u.created_at AS seller_member_since,
-    COALESCE((SELECT count(*) FROM bids b WHERE b.listing_id = l.id), 0) AS bid_count
+    COALESCE((SELECT count(*) FROM bids b WHERE b.listing_id = l.id), 0) AS bid_count,
+    (SELECT avg(r.rating) FROM seller_reviews r WHERE r.seller_id = l.seller_id) AS seller_rating,
+    (SELECT count(*) FROM seller_reviews r WHERE r.seller_id = l.seller_id) AS seller_review_count
   FROM listings l
   JOIN users u ON u.id = l.seller_id
 `;
@@ -53,6 +57,8 @@ export function toApiListing(row: ListingRow) {
     sellerBuildingName: row.seller_building_name,
     sellerVerified: row.seller_verified,
     sellerMemberSince: row.seller_member_since.toISOString(),
+    sellerRating: row.seller_rating !== null ? Number(row.seller_rating) : undefined,
+    sellerReviewCount: Number(row.seller_review_count),
     createdAt: row.created_at.toISOString(),
     price: row.price !== null ? Number(row.price) : undefined,
     startingPrice: row.starting_price !== null ? Number(row.starting_price) : undefined,

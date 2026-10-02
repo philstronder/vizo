@@ -124,3 +124,16 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC);
+
+-- One rating per order, left by the buyer once the order is completed.
+CREATE TABLE IF NOT EXISTS seller_reviews (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id          UUID NOT NULL UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
+  seller_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  buyer_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  rating            SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment           TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_seller_reviews_seller ON seller_reviews(seller_id);

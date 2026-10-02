@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { checkoutListingTx, completeOrder, findOrderById, listOrdersForUser, toApiOrder } from "../db/orders";
+import { checkoutListingTx, completeOrder, findOrderById, reviewOrder, listOrdersForUser, toApiOrder } from "../db/orders";
 import { findListingById } from "../db/listings";
 import { createNotification } from "../db/notifications";
 import { requireAuth } from "../middleware/auth";
@@ -73,6 +73,31 @@ ordersRouter.patch("/:id/complete", requireAuth, async (req, res, next) => {
     });
 
     res.json(toApiOrder(order));
+  } catch (err) {
+    next(err);
+  }
+});
+
+const reviewSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().trim().max(1000).optional(),
+});
+
+ordersRouter.post("/:id/review", requireAuth, async (req, res, next) => {
+  try {
+    const orderId = req.params.id as string;
+    const input = reviewSchema.parse(req.body);
+    const result = await reviewOrder({
+      orderId,
+      userId: req.userId!,
+      rating: input.rating,
+      comment: input.comment || undefined,
+    });
+    if (!result.ok) throw new HttpError(result.status, result.reason);
+
+    const order = await findOrderById(orderId);
+    if (!order) throw notFound("Order not found");
+    res.status(201).json(toApiOrder(order));
   } catch (err) {
     next(err);
   }
