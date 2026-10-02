@@ -106,9 +106,11 @@ CREATE INDEX IF NOT EXISTS idx_orders_buyer ON orders(buyer_id);
 CREATE INDEX IF NOT EXISTS idx_orders_seller ON orders(seller_id);
 
 DO $$ BEGIN
-  CREATE TYPE notification_type AS ENUM ('new_bid', 'sold', 'message', 'outbid', 'listing_ending');
+  CREATE TYPE notification_type AS ENUM ('new_bid', 'sold', 'message', 'outbid', 'listing_ending', 'order_completed');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+-- Keeps databases created before 'order_completed' existed in sync.
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'order_completed';
 
 CREATE TABLE IF NOT EXISTS notifications (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),

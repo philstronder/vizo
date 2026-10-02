@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
-import { checkoutListingTx, findOrderById, listOrdersForUser, toApiOrder } from "../db/orders";
+import { checkoutListingTx, completeOrder, findOrderById, listOrdersForUser, toApiOrder } from "../db/orders";
 import { findListingById } from "../db/listings";
 import { createNotification } from "../db/notifications";
 import { requireAuth } from "../middleware/auth";
-import { badRequest, notFound } from "../lib/http-error";
+import { HttpError, badRequest, notFound } from "../lib/http-error";
 
 export const ordersRouter = Router();
 
@@ -48,6 +48,31 @@ ordersRouter.post("/", requireAuth, async (req, res, next) => {
     const order = await findOrderById(result.orderId);
     if (!order) throw notFound("Order not found");
     res.status(201).json(toApiOrder(order));
+  } catch (err) {
+    next(err);
+  }
+});
+
+ordersRouter.patch("/:id/complete", requireAuth, async (req, res, next) => {
+  try {
+    const orderId = req.params.id as string;
+    const result = await completeOrder(orderId, req.userId!);
+    if (!result.ok) throw new HttpError(result.status, result.reason);
+
+    const order = await findOrderById(orderId);
+    if (!order) throw notFound("Order not found");
+
+    // Let whoever didn't mark it know the handoff was recorded.
+    const markedByBuyer = order.buyer_id === req.userId;
+    await createNotification({
+      userId: markedByBuyer ? order.seller_id : order.buyer_id,
+      type: "order_completed",
+      title: `${order.listing_title} delivered`,
+      body: `${markedByBuyer ? order.buyer_name : order.seller_name} marked this order as delivered.`,
+      href: "/orders",
+    });
+
+    res.json(toApiOrder(order));
   } catch (err) {
     next(err);
   }

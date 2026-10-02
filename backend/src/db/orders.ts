@@ -125,3 +125,25 @@ export async function findOrderById(id: string): Promise<OrderRow | null> {
   const { rows } = await pool.query<OrderRow>(`${ORDER_SELECT} WHERE o.id = $1`, [id]);
   return rows[0] ?? null;
 }
+
+// Marks an order as delivered. Only the buyer or seller may do it, and only
+// while the order is still open, so completed/cancelled orders are left alone.
+export async function completeOrder(
+  orderId: string,
+  userId: string
+): Promise<{ ok: true } | { ok: false; status: 403 | 404 | 409; reason: string }> {
+  const { rowCount } = await pool.query(
+    `UPDATE orders SET status = 'completed'
+     WHERE id = $1 AND (buyer_id = $2 OR seller_id = $2)
+       AND status IN ('pending_pickup', 'ready_for_pickup', 'shipped')`,
+    [orderId, userId]
+  );
+  if (rowCount) return { ok: true };
+
+  const order = await findOrderById(orderId);
+  if (!order) return { ok: false, status: 404, reason: "Order not found" };
+  if (order.buyer_id !== userId && order.seller_id !== userId) {
+    return { ok: false, status: 403, reason: "Only the buyer or seller can update this order" };
+  }
+  return { ok: false, status: 409, reason: `This order is already ${order.status}` };
+}
