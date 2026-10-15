@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Bell, LogOut, Menu, Plus, Search, ShoppingCart, X } from "lucide-react";
+import { Bell, LogOut, Menu, Plus, Search, ShieldCheck, ShoppingCart, Store, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAuth } from "@/lib/auth-context";
 import { fetchNotifications } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { useI18n } from "@/i18n/I18nProvider";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { storeHref, useStoreMode } from "@/lib/store-mode";
 
 export function Header() {
   const [query, setQuery] = useState("");
@@ -19,10 +20,11 @@ export function Header() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { t } = useI18n();
+  const storeMode = useStoreMode();
   const unreadCount = user ? notificationCount : 0;
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || storeMode) return;
     let active = true;
     fetchNotifications()
       .then((notifications) => {
@@ -32,7 +34,7 @@ export function Header() {
     return () => {
       active = false;
     };
-  }, [user, pathname]);
+  }, [user, pathname, storeMode]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -44,6 +46,11 @@ export function Header() {
     await logout();
     router.push("/");
   }
+
+  if (storeMode) return <StoreModeHeader storeId={storeMode} />;
+  // Until it's known whether this tab is confined to a store (server render
+  // and hydration), show no links at all so a store viewer never gets one.
+  if (storeMode === undefined) return <BareHeader />;
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-cream/90 backdrop-blur supports-[backdrop-filter]:bg-cream/70">
@@ -85,6 +92,16 @@ export function Header() {
           <LanguageSwitcher />
           {user ? (
             <>
+              {user.isAdmin && (
+                <>
+                  <Button href="/stores" variant="ghost" size="sm" className="hidden sm:inline-flex">
+                    <Store size={16} /> {t.header.stores}
+                  </Button>
+                  <Button href="/admins" variant="ghost" size="sm" className="hidden sm:inline-flex">
+                    <ShieldCheck size={16} /> {t.header.admins}
+                  </Button>
+                </>
+              )}
               <Button href="/sell/new" size="sm" className="hidden sm:inline-flex">
                 <Plus size={16} /> {t.header.newListing}
               </Button>
@@ -144,6 +161,16 @@ export function Header() {
               <Button href="/sell/new" size="sm" fullWidth>
                 <Plus size={16} /> {t.header.newListing}
               </Button>
+              {user.isAdmin && (
+                <>
+                  <Button href="/stores" variant="secondary" size="sm" fullWidth>
+                    <Store size={16} /> {t.header.stores}
+                  </Button>
+                  <Button href="/admins" variant="secondary" size="sm" fullWidth>
+                    <ShieldCheck size={16} /> {t.header.admins}
+                  </Button>
+                </>
+              )}
               <Button variant="ghost" size="sm" fullWidth onClick={handleLogout}>
                 <LogOut size={16} /> {t.header.signOut}
               </Button>
@@ -155,6 +182,70 @@ export function Header() {
           )}
         </div>
       )}
+    </header>
+  );
+}
+
+// Viewers who came in through a TV show's QR code only get a way back to the
+// store and to their account: no search, community feed, or other pages.
+function StoreModeHeader({ storeId }: { storeId: string }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user, logout } = useAuth();
+  const { t } = useI18n();
+  const home = storeHref(storeId);
+  // Come back to the product being viewed; from the auth pages themselves,
+  // the forms already default to the store.
+  const onAuthPage = pathname === "/login" || pathname === "/register";
+  const next = onAuthPage ? "" : `?next=${encodeURIComponent(pathname)}`;
+
+  async function handleLogout() {
+    await logout();
+    router.push(home);
+  }
+
+  return (
+    <header className="sticky top-0 z-40 border-b border-line bg-cream/90 backdrop-blur supports-[backdrop-filter]:bg-cream/70">
+      <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
+        <Link href={home} className="flex items-center gap-2 shrink-0">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink text-amber font-black text-lg">
+            V
+          </span>
+          <span className="font-black text-lg tracking-tight text-ink hidden sm:inline">VIZO</span>
+        </Link>
+
+        <div className="ml-auto flex items-center gap-1 sm:gap-2">
+          <LanguageSwitcher />
+          {user ? (
+            <>
+              <Avatar name={user.name} size={34} />
+              <button onClick={handleLogout} className="text-xs font-medium text-ink-400 hover:text-ink ml-1">
+                {t.header.signOut}
+              </button>
+            </>
+          ) : (
+            <>
+              <Button href={`/login${next}`} variant="ghost" size="sm">
+                {t.header.signIn}
+              </Button>
+              <Button href={`/register${next}`} size="sm">
+                {t.header.join}
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function BareHeader() {
+  return (
+    <header className="sticky top-0 z-40 border-b border-line bg-cream/90 backdrop-blur supports-[backdrop-filter]:bg-cream/70">
+      <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-3 sm:px-6">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink text-amber font-black text-lg">V</span>
+        <span className="font-black text-lg tracking-tight text-ink hidden sm:inline">VIZO</span>
+      </div>
     </header>
   );
 }

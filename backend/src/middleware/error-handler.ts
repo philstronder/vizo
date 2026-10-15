@@ -18,6 +18,13 @@ export function errorHandler(err: unknown, req: Request, res: Response, next: Ne
     return;
   }
 
+  // invalid_text_representation: a malformed UUID in the URL, e.g. a
+  // mistyped store link. Nothing can match it, so treat it as not found.
+  if (typeof err === "object" && err !== null && (err as { code?: unknown }).code === "22P02") {
+    res.status(404).json({ message: "Not found" });
+    return;
+  }
+
   console.error(err);
   res.status(500).json({ message: "Internal server error" });
 }

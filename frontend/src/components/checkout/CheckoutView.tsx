@@ -12,11 +12,13 @@ import { formatCurrency } from "@/lib/format";
 import { CreditCard, MapPin } from "lucide-react";
 import type { Listing } from "@/types";
 import { useI18n } from "@/i18n/I18nProvider";
+import { storeHref, useStoreMode } from "@/lib/store-mode";
 
 export function CheckoutView({ listingId }: { listingId: string }) {
   const router = useRouter();
   const { user } = useAuth();
   const { locale, t } = useI18n();
+  const storeMode = useStoreMode();
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -33,13 +35,21 @@ export function CheckoutView({ listingId }: { listingId: string }) {
       .finally(() => setLoading(false));
   }, [listingId]);
 
-  if (loading) return null;
+  // Store-mode viewers can only buy from their store.
+  const outsideStore = !!storeMode && !!listing && listing.storeId !== storeMode;
+  useEffect(() => {
+    if (outsideStore) router.replace(storeHref(storeMode!));
+  }, [outsideStore, storeMode, router]);
+
+  if (loading || outsideStore) return null;
 
   if (!listing) {
     return (
       <div className="mx-auto max-w-lg px-4 py-20 text-center">
         <h1 className="mb-2 text-xl font-bold text-ink">{t.checkout.notFound}</h1>
-        <Button href="/">{t.common.backToMarketplace}</Button>
+        <Button href={storeMode ? storeHref(storeMode) : "/"}>
+          {storeMode ? t.common.back : t.common.backToMarketplace}
+        </Button>
       </div>
     );
   }
@@ -47,6 +57,7 @@ export function CheckoutView({ listingId }: { listingId: string }) {
   const price = listing.type === "auction" ? listing.currentBid ?? 0 : listing.price ?? 0;
   const fees = 0;
   const total = price + fees;
+  const isStoreProduct = !!listing.storeId;
   const isAuctionWin = listing.type === "auction" && user && listing.maxBidderId === user.id;
 
   async function handleConfirm(e: React.FormEvent) {
@@ -56,10 +67,12 @@ export function CheckoutView({ listingId }: { listingId: string }) {
     try {
       await checkout({
         listingId,
-        pickupLocation,
-        pickupTime: pickupTime || undefined,
+        // Store products aren't handed over inside a building.
+        pickupLocation: isStoreProduct ? undefined : pickupLocation,
+        pickupTime: isStoreProduct ? undefined : pickupTime || undefined,
       });
-      router.push("/orders");
+      // Store-mode viewers stay in the store; everyone else tracks it in Orders.
+      router.push(storeMode ? `${storeHref(storeMode)}?purchased=1` : "/orders");
     } catch (err) {
       setError(err instanceof Error ? err.message : t.checkout.error);
       setSubmitting(false);
@@ -109,28 +122,30 @@ export function CheckoutView({ listingId }: { listingId: string }) {
           </CardBody>
         </Card>
 
-        <Card className="mb-4">
-          <CardBody>
-            <h2 className="mb-3 flex items-center gap-1.5 font-bold text-ink">
-              <MapPin size={16} /> {t.checkout.pickupDetails}
-            </h2>
-            <p className="mb-3 text-xs text-ink-400">
-              {t.checkout.pickupWithin(user?.buildingName ?? t.common.yourBuilding)}
-            </p>
-            <FieldGroup label={t.checkout.pickupLocation}>
-              <Select value={pickupLocation} onChange={(e) => setPickupLocation(e.target.value)}>
-                {Object.entries(t.checkout.pickupOptions).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-            </FieldGroup>
-            <FieldGroup label={t.checkout.preferredTime} hint={t.checkout.preferredTimeHint}>
-              <Input value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} placeholder={t.checkout.preferredTimePlaceholder} />
-            </FieldGroup>
-          </CardBody>
-        </Card>
+        {!isStoreProduct && (
+          <Card className="mb-4">
+            <CardBody>
+              <h2 className="mb-3 flex items-center gap-1.5 font-bold text-ink">
+                <MapPin size={16} /> {t.checkout.pickupDetails}
+              </h2>
+              <p className="mb-3 text-xs text-ink-400">
+                {t.checkout.pickupWithin(user?.buildingName ?? t.common.yourBuilding)}
+              </p>
+              <FieldGroup label={t.checkout.pickupLocation}>
+                <Select value={pickupLocation} onChange={(e) => setPickupLocation(e.target.value)}>
+                  {Object.entries(t.checkout.pickupOptions).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </Select>
+              </FieldGroup>
+              <FieldGroup label={t.checkout.preferredTime} hint={t.checkout.preferredTimeHint}>
+                <Input value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} placeholder={t.checkout.preferredTimePlaceholder} />
+              </FieldGroup>
+            </CardBody>
+          </Card>
+        )}
 
         <Card className="mb-6">
           <CardBody>

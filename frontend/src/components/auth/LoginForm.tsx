@@ -8,9 +8,14 @@ import { FieldGroup, Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/i18n/I18nProvider";
+import { safeNext, storeHref, useStoreMode } from "@/lib/store-mode";
 
-export function LoginForm() {
+// `next` is where to go once signed in, e.g. back to the product a store
+// viewer was about to buy.
+export function LoginForm({ next }: { next?: string }) {
   const router = useRouter();
+  const storeId = useStoreMode();
+  const destination = safeNext(next) ?? (storeId ? storeHref(storeId) : "/");
   const { login } = useAuth();
   const { t } = useI18n();
   const [email, setEmail] = useState("");
@@ -24,7 +29,7 @@ export function LoginForm() {
     setError(null);
     try {
       await login(email, password);
-      router.push("/");
+      router.push(destination);
     } catch (err) {
       setError(err instanceof Error ? err.message : t.auth.login.error);
     } finally {
@@ -39,7 +44,7 @@ export function LoginForm() {
       footer={
         <>
           {t.auth.login.newHere}{" "}
-          <Link href="/register" className="font-semibold text-amber-600 hover:underline">
+          <Link href={safeNext(next) ? `/register?next=${encodeURIComponent(destination)}` : "/register"} className="font-semibold text-amber-600 hover:underline">
             {t.auth.login.verifyResidency}
           </Link>
         </>

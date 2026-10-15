@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { Message } from "@/types";
 import { formatRelativeTime } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
@@ -17,6 +18,7 @@ export function MessageThread({
   onSend: (body: string) => Promise<void>;
 }) {
   const { user } = useAuth();
+  const pathname = usePathname();
   const { locale, t } = useI18n();
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -65,7 +67,7 @@ export function MessageThread({
         </form>
       ) : (
         <p className="text-sm text-ink-400">
-          <Link href="/login" className="font-semibold text-amber-600 hover:underline">
+          <Link href={`/login?next=${encodeURIComponent(pathname)}`} className="font-semibold text-amber-600 hover:underline">
             {t.messages.signIn}
           </Link>{" "}
           {t.messages.toAsk}
