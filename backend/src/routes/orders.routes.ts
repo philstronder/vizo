@@ -4,6 +4,7 @@ import { checkoutListingTx, completeOrder, findOrderById, reviewOrder, listOrder
 import { findListingById } from "../db/listings";
 import { createNotification } from "../db/notifications";
 import { requireAuth } from "../middleware/auth";
+import { findViewableListing } from "../lib/listing-access";
 import { HttpError, badRequest, notFound } from "../lib/http-error";
 
 export const ordersRouter = Router();
@@ -26,6 +27,8 @@ const checkoutSchema = z.object({
 ordersRouter.post("/", requireAuth, async (req, res, next) => {
   try {
     const input = checkoutSchema.parse(req.body);
+    // Buyers can only check out store products or their own building's listings.
+    await findViewableListing(input.listingId, req.userId);
     const result = await checkoutListingTx({
       listingId: input.listingId,
       buyerId: req.userId!,

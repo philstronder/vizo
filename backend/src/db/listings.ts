@@ -3,6 +3,7 @@ import { pool } from "./pool";
 export interface ListingRow {
   id: string;
   seller_id: string;
+  store_id: string | null;
   seller_name: string;
   seller_unit_number: string;
   seller_building_name: string;
@@ -52,6 +53,7 @@ export function toApiListing(row: ListingRow) {
     status: row.status,
     images: row.images,
     sellerId: row.seller_id,
+    storeId: row.store_id ?? undefined,
     sellerName: row.seller_name,
     sellerUnitNumber: row.seller_unit_number,
     sellerBuildingName: row.seller_building_name,
@@ -75,6 +77,10 @@ export interface ListingFilters {
   type?: "direct" | "auction";
   sellerId?: string;
   q?: string;
+  // Exactly one scope applies: a store's products, or a building's
+  // community listings (which never include store products).
+  storeId?: string;
+  buildingName?: string;
 }
 
 export async function listListings(filters: ListingFilters): Promise<ListingRow[]> {
@@ -90,6 +96,11 @@ export async function listListings(filters: ListingFilters): Promise<ListingRow[
   if (filters.category) addFilter("l.category = ?", filters.category);
   if (filters.type) addFilter("l.type = ?", filters.type);
   if (filters.sellerId) addFilter("l.seller_id = ?", filters.sellerId);
+  if (filters.storeId) addFilter("l.store_id = ?", filters.storeId);
+  if (filters.buildingName !== undefined) {
+    conditions.push("l.store_id IS NULL");
+    addFilter("lower(trim(u.building_name)) = lower(trim(?))", filters.buildingName);
+  }
   if (filters.q) {
     params.push(`%${filters.q}%`);
     const titlePlaceholder = `$${params.length}`;
@@ -113,6 +124,7 @@ export async function findListingById(id: string): Promise<ListingRow | null> {
 
 export interface CreateListingInput {
   sellerId: string;
+  storeId?: string;
   title: string;
   description: string;
   category: string;
@@ -127,8 +139,8 @@ export interface CreateListingInput {
 export async function createListing(input: CreateListingInput): Promise<ListingRow> {
   const { rows } = await pool.query<{ id: string }>(
     `INSERT INTO listings
-      (seller_id, title, description, category, condition, type, images, price, starting_price, current_bid, auction_ends_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10)
+      (seller_id, title, description, category, condition, type, images, price, starting_price, current_bid, auction_ends_at, store_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10, $11)
      RETURNING id`,
     [
       input.sellerId,
@@ -141,6 +153,7 @@ export async function createListing(input: CreateListingInput): Promise<ListingR
       input.price ?? null,
       input.startingPrice ?? null,
       input.auctionEndsAt ?? null,
+      input.storeId ?? null,
     ]
   );
   const created = await findListingById(rows[0].id);

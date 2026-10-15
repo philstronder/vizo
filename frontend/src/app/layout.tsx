@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { AuthProvider } from "@/lib/auth-context";
+import { StoreModeGuard } from "@/lib/store-mode";
 import { I18nProvider } from "@/i18n/I18nProvider";
 import { getDictionary } from "@/i18n/dictionaries";
 import { getLocale } from "@/i18n/server";
@@ -33,7 +34,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <I18nProvider initialLocale={locale}>
           <AuthProvider>
             <Header />
-            <main className="flex-1">{children}</main>
+            <main className="flex-1">
+              <StoreModeGuard>{children}</StoreModeGuard>
+            </main>
           </AuthProvider>
         </I18nProvider>
       </body>

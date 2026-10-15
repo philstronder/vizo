@@ -11,6 +11,7 @@ import type {
   Message,
   Notification,
   Order,
+  Store,
 } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -51,6 +52,7 @@ export interface AuthUser {
   buildingName: string;
   unitNumber: string;
   verified: boolean;
+  isAdmin: boolean;
   memberSince: string;
 }
 
@@ -101,6 +103,7 @@ export interface ListingQuery {
   type?: ListingType;
   q?: string;
   sellerId?: string;
+  storeId?: string;
 }
 
 function toQueryString(query: object): string {
@@ -130,6 +133,7 @@ export interface CreateListingPayload {
   price?: number;
   startingPrice?: number;
   auctionDurationDays?: 1 | 3 | 7;
+  storeId?: string;
 }
 
 export async function createListing(payload: CreateListingPayload): Promise<Listing> {
@@ -160,6 +164,47 @@ export async function postMessage(listingId: string, body: string): Promise<Mess
     method: "POST",
     body: JSON.stringify({ body }),
   });
+}
+
+// ---- stores ---------------------------------------------------------------
+
+export interface StorePayload {
+  name: string;
+  description: string;
+}
+
+export async function fetchStores(): Promise<Store[]> {
+  return request("/api/stores");
+}
+
+export async function fetchStore(id: string): Promise<Store> {
+  return request(`/api/stores/${id}`);
+}
+
+export async function createStore(payload: StorePayload): Promise<Store> {
+  return request("/api/stores", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function updateStore(id: string, payload: StorePayload): Promise<Store> {
+  return request(`/api/stores/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
+}
+
+export async function deleteStore(id: string): Promise<void> {
+  await request(`/api/stores/${id}`, { method: "DELETE" });
+}
+
+// ---- admins ---------------------------------------------------------------
+
+export async function fetchAdmins(): Promise<AuthUser[]> {
+  return request("/api/admins");
+}
+
+export async function addAdmin(email: string): Promise<AuthUser> {
+  return request("/api/admins", { method: "POST", body: JSON.stringify({ email }) });
+}
+
+export async function removeAdmin(userId: string): Promise<void> {
+  await request(`/api/admins/${userId}`, { method: "DELETE" });
 }
 
 // ---- orders ---------------------------------------------------------------

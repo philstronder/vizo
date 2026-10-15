@@ -13,8 +13,9 @@ import { Check, Gavel, Tag } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { currencySymbol } from "@/lib/format";
 import { useI18n } from "@/i18n/I18nProvider";
+import { storeHref } from "@/lib/store-mode";
 
-export function CreateListingFlow() {
+export function CreateListingFlow({ storeId }: { storeId?: string }) {
   const router = useRouter();
   const { user } = useAuth();
   const { locale, t } = useI18n();
@@ -52,8 +53,9 @@ export function CreateListingFlow() {
         price: type === "direct" ? Number(price) : undefined,
         startingPrice: type === "auction" ? Number(startingPrice) : undefined,
         auctionDurationDays: type === "auction" ? (Number(duration) as 1 | 3 | 7) : undefined,
+        storeId,
       });
-      router.push(`/listing/${listing.id}`);
+      router.push(storeId ? storeHref(storeId) : `/listing/${listing.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : t.sell.error);
       setPublishing(false);
@@ -62,9 +64,9 @@ export function CreateListingFlow() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-      <h1 className="mb-1 text-2xl font-black text-ink">{t.sell.title}</h1>
+      <h1 className="mb-1 text-2xl font-black text-ink">{storeId ? t.sell.storeTitle : t.sell.title}</h1>
       <p className="mb-6 text-sm text-ink-400">
-        {t.sell.subtitle(user?.buildingName)}
+        {storeId ? t.sell.storeSubtitle : t.sell.subtitle(user?.buildingName)}
       </p>
 
       <div className="mb-6 flex items-center gap-2">

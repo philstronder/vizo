@@ -13,9 +13,10 @@ import { BidHistory } from "./BidHistory";
 import { PlaceBidModal } from "./PlaceBidModal";
 import { MessageThread } from "./MessageThread";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { BadgeCheck, Gavel, MapPin, Tag } from "lucide-react";
+import { BadgeCheck, Gavel, MapPin, Tag, Tv } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import {
+  ApiError,
   fetchBids,
   fetchListing,
   fetchMessages,
@@ -25,6 +26,7 @@ import {
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useI18n } from "@/i18n/I18nProvider";
+import { storeHref, useConfineToStore, useStoreMode } from "@/lib/store-mode";
 
 export function ListingDetailView({ listingId }: { listingId: string }) {
   const { user } = useAuth();
@@ -36,32 +38,52 @@ export function ListingDetailView({ listingId }: { listingId: string }) {
   const [notFoundState, setNotFoundState] = useState(false);
   const [bidModalOpen, setBidModalOpen] = useState(false);
   const router = useRouter();
+  const storeMode = useStoreMode();
+  const loginHref = `/login?next=${encodeURIComponent(`/listing/${listingId}`)}`;
 
   const load = useCallback(() => {
-    return Promise.all([fetchListing(listingId), fetchMessages(listingId)])
-      .then(([listingData, messagesData]) => {
+    return fetchListing(listingId)
+      .then((listingData) => {
         setListing(listingData);
-        setMessages(messagesData);
-        if (listingData.type === "auction") {
-          return fetchBids(listingId).then(setBids);
-        }
+        // Store products have no Q&A with the seller.
+        return Promise.all([
+          listingData.storeId ? null : fetchMessages(listingId).then(setMessages),
+          listingData.type === "auction" ? fetchBids(listingId).then(setBids) : null,
+        ]);
       })
-      .catch(() => setNotFoundState(true))
+      .catch((err) => {
+        // Community listings need a signed-in neighbor; send them to sign in.
+        if (err instanceof ApiError && err.status === 401) router.replace(loginHref);
+        else setNotFoundState(true);
+      })
       .finally(() => setLoading(false));
-  }, [listingId]);
+  }, [listingId, loginHref, router]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  if (loading) return null;
+  // A signed-out visitor on a store product came from that store's QR code or
+  // link. Signed-in residents also reach past store purchases from Orders,
+  // and shouldn't be locked in for that.
+  useConfineToStore(user ? undefined : listing?.storeId);
+
+  // Store-mode viewers can't open listings from outside their store.
+  const outsideStore = !!storeMode && !!listing && listing.storeId !== storeMode;
+  useEffect(() => {
+    if (outsideStore) router.replace(storeHref(storeMode!));
+  }, [outsideStore, storeMode, router]);
+
+  if (loading || outsideStore) return null;
 
   if (notFoundState || !listing) {
     return (
       <div className="mx-auto max-w-lg px-4 py-20 text-center">
         <h1 className="mb-2 text-xl font-bold text-ink">{t.detail.notFoundTitle}</h1>
         <p className="mb-6 text-sm text-ink-400">{t.detail.notFoundHint}</p>
-        <Button href="/">{t.common.backToMarketplace}</Button>
+        <Button href={storeMode ? storeHref(storeMode) : "/"}>
+          {storeMode ? t.common.back : t.common.backToMarketplace}
+        </Button>
       </div>
     );
   }
@@ -69,6 +91,7 @@ export function ListingDetailView({ listingId }: { listingId: string }) {
   const isAuction = listing.type === "auction";
   const isOwner = user?.id === listing.sellerId;
   const ended = listing.status !== "active";
+  const isStoreProduct = !!listing.storeId;
 
   async function handleBid(amount: number) {
     await apiPlaceBid(listingId, amount);
@@ -82,7 +105,7 @@ export function ListingDetailView({ listingId }: { listingId: string }) {
 
   function handleBuyOrBid() {
     if (!user) {
-      router.push("/login");
+      router.push(loginHref);
       return;
     }
     if (isAuction) {
@@ -106,9 +129,11 @@ export function ListingDetailView({ listingId }: { listingId: string }) {
             <p className="whitespace-pre-line text-sm leading-relaxed text-ink-600">{listing.description}</p>
           </div>
 
-          <div className="mt-6">
-            <MessageThread messages={messages} onSend={handleSendMessage} />
-          </div>
+          {!isStoreProduct && (
+            <div className="mt-6">
+              <MessageThread messages={messages} onSend={handleSendMessage} />
+            </div>
+          )}
         </div>
 
         <div>
@@ -128,7 +153,15 @@ export function ListingDetailView({ listingId }: { listingId: string }) {
 
           <h1 className="mb-1 text-2xl font-black text-ink">{listing.title}</h1>
           <p className="mb-5 flex items-center gap-1 text-sm text-ink-400">
-            <MapPin size={14} /> {listing.sellerBuildingName ?? t.common.community}
+            {isStoreProduct ? (
+              <Link href={storeHref(listing.storeId!)} className="flex items-center gap-1 hover:text-ink">
+                <Tv size={14} /> {t.store.officialProduct}
+              </Link>
+            ) : (
+              <>
+                <MapPin size={14} /> {listing.sellerBuildingName ?? t.common.community}
+              </>
+            )}
           </p>
 
           <Card>
@@ -196,34 +229,36 @@ export function ListingDetailView({ listingId }: { listingId: string }) {
             </CardBody>
           </Card>
 
-          <Link href={isOwner ? "/profile" : "#"}>
-            <Card className="mt-4">
-              <CardBody className="flex items-center gap-3">
-                <Avatar name={listing.sellerName} size={44} />
-                <div className="min-w-0">
-                  <p className="flex items-center gap-1 font-semibold text-ink">
-                    {listing.sellerName}
-                    {listing.sellerVerified && <BadgeCheck size={15} className="text-info" />}
-                  </p>
-                  <p className="text-xs text-ink-400">
-                    {listing.sellerUnitNumber && <>{t.common.unit(listing.sellerUnitNumber)} &middot; </>}
-                    {listing.sellerMemberSince && <>{t.common.memberSince(formatDate(listing.sellerMemberSince, locale))}</>}
-                  </p>
-                  <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-400">
-                    <StarRating value={listing.sellerRating ?? 0} />
-                    {listing.sellerReviewCount ? (
-                      <>
-                        <span className="font-semibold text-ink">{listing.sellerRating!.toFixed(1)}</span>
-                        <span>{t.detail.ratingCount(listing.sellerReviewCount)}</span>
-                      </>
-                    ) : (
-                      <span>{t.detail.noRatings}</span>
+          {!isStoreProduct && (
+            <Link href={isOwner ? "/profile" : "#"}>
+              <Card className="mt-4">
+                <CardBody className="flex items-center gap-3">
+                  <Avatar name={listing.sellerName} size={44} />
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-1 font-semibold text-ink">
+                      {listing.sellerName}
+                      {listing.sellerVerified && <BadgeCheck size={15} className="text-info" />}
+                    </p>
+                    <p className="text-xs text-ink-400">
+                      {listing.sellerUnitNumber && <>{t.common.unit(listing.sellerUnitNumber)} &middot; </>}
+                      {listing.sellerMemberSince && <>{t.common.memberSince(formatDate(listing.sellerMemberSince, locale))}</>}
+                    </p>
+                    <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-400">
+                      <StarRating value={listing.sellerRating ?? 0} />
+                      {listing.sellerReviewCount ? (
+                        <>
+                          <span className="font-semibold text-ink">{listing.sellerRating!.toFixed(1)}</span>
+                          <span>{t.detail.ratingCount(listing.sellerReviewCount)}</span>
+                        </>
+                      ) : (
+                        <span>{t.detail.noRatings}</span>
                     )}
                   </p>
                 </div>
               </CardBody>
             </Card>
           </Link>
+          )}
         </div>
       </div>
 

@@ -8,6 +8,8 @@ import { authRouter } from "./routes/auth.routes";
 import { listingsRouter } from "./routes/listings.routes";
 import { ordersRouter } from "./routes/orders.routes";
 import { notificationsRouter } from "./routes/notifications.routes";
+import { storesRouter } from "./routes/stores.routes";
+import { adminsRouter } from "./routes/admins.routes";
 
 export const app = express();
 
@@ -25,6 +27,8 @@ app.use("/api/auth", authRouter);
 app.use("/api/listings", listingsRouter);
 app.use("/api/orders", ordersRouter);
 app.use("/api/notifications", notificationsRouter);
+app.use("/api/stores", storesRouter);
+app.use("/api/admins", adminsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

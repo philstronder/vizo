@@ -4,6 +4,7 @@ import {
   createListing,
   deleteListing,
   findListingById,
+  type ListingFilters,
   listBidsForListing,
   listListings,
   placeBidTx,
@@ -12,8 +13,11 @@ import {
 } from "../db/listings";
 import { createMessage, listMessagesForListing, toApiMessage } from "../db/messages";
 import { createNotification } from "../db/notifications";
+import { findStoreById } from "../db/stores";
+import { findUserById } from "../db/users";
 import { requireAuth } from "../middleware/auth";
-import { badRequest, forbidden, notFound } from "../lib/http-error";
+import { badRequest, forbidden, notFound, unauthorized } from "../lib/http-error";
+import { findViewableListing } from "../lib/listing-access";
 
 export const listingsRouter = Router();
 
@@ -22,13 +26,35 @@ const conditionEnum = z.enum(["new", "used-excellent", "used-good"]);
 
 listingsRouter.get("/", async (req, res, next) => {
   try {
-    const { status, category, type, q, sellerId } = req.query;
+    const { status, category, type, q, sellerId, storeId } = req.query;
     // Default to active-only for the general marketplace feed, but when
     // scoped to a specific seller (e.g. "My Listings"), show every status
-    // unless the caller explicitly asks for one.
+    // unless the caller explicitly asks for one. "all" lifts the filter.
     const resolvedStatus =
-      typeof status === "string" ? status : typeof sellerId === "string" ? undefined : "active";
+      status === "all"
+        ? undefined
+        : typeof status === "string"
+          ? status
+          : typeof sellerId === "string"
+            ? undefined
+            : "active";
+
+    // A store's products are public. Everything else is the viewer's
+    // building community, so it needs a signed-in viewer.
+    let scope: Pick<ListingFilters, "storeId" | "buildingName">;
+    if (typeof storeId === "string") {
+      const store = await findStoreById(storeId);
+      if (!store) throw notFound("Store not found");
+      scope = { storeId: store.id };
+    } else {
+      if (!req.userId) throw unauthorized("Sign in to see your community's listings");
+      const viewer = await findUserById(req.userId);
+      if (!viewer) throw unauthorized();
+      scope = { buildingName: viewer.building_name };
+    }
+
     const rows = await listListings({
+      ...scope,
       status: resolvedStatus,
       category: typeof category === "string" ? category : undefined,
       type: type === "direct" || type === "auction" ? type : undefined,
@@ -52,6 +78,7 @@ const createListingSchema = z
     price: z.number().positive().optional(),
     startingPrice: z.number().positive().optional(),
     auctionDurationDays: z.union([z.literal(1), z.literal(3), z.literal(7)]).optional(),
+    storeId: z.string().min(1).optional(),
   })
   .refine((data) => data.type !== "direct" || data.price !== undefined, {
     message: "price is required for direct sale listings",
@@ -65,8 +92,14 @@ const createListingSchema = z
 listingsRouter.post("/", requireAuth, async (req, res, next) => {
   try {
     const input = createListingSchema.parse(req.body);
+    if (input.storeId) {
+      const seller = await findUserById(req.userId!);
+      if (!seller?.is_admin) throw forbidden("Only admins can add products to a store");
+      if (!(await findStoreById(input.storeId))) throw notFound("Store not found");
+    }
     const listing = await createListing({
       sellerId: req.userId!,
+      storeId: input.storeId,
       title: input.title,
       description: input.description,
       category: input.category,
@@ -88,9 +121,7 @@ listingsRouter.post("/", requireAuth, async (req, res, next) => {
 
 listingsRouter.get("/:id", async (req, res, next) => {
   try {
-    const listingId = req.params.id as string;
-    const listing = await findListingById(listingId);
-    if (!listing) throw notFound("Listing not found");
+    const listing = await findViewableListing(req.params.id as string, req.userId);
     res.json(toApiListing(listing));
   } catch (err) {
     next(err);
@@ -110,8 +141,8 @@ listingsRouter.delete("/:id", requireAuth, async (req, res, next) => {
 
 listingsRouter.get("/:id/bids", async (req, res, next) => {
   try {
-    const listingId = req.params.id as string;
-    const rows = await listBidsForListing(listingId);
+    const listing = await findViewableListing(req.params.id as string, req.userId);
+    const rows = await listBidsForListing(listing.id);
     res.json(rows.map(toApiBid));
   } catch (err) {
     next(err);
@@ -124,8 +155,7 @@ listingsRouter.post("/:id/bids", requireAuth, async (req, res, next) => {
   try {
     const listingId = req.params.id as string;
     const { amount } = placeBidSchema.parse(req.body);
-    const listing = await findListingById(listingId);
-    if (!listing) throw notFound("Listing not found");
+    const listing = await findViewableListing(listingId, req.userId);
     if (listing.seller_id === req.userId) throw forbidden("You cannot bid on your own listing");
 
     const result = await placeBidTx(listingId, req.userId!, amount);
@@ -148,8 +178,13 @@ listingsRouter.post("/:id/bids", requireAuth, async (req, res, next) => {
 
 listingsRouter.get("/:id/messages", async (req, res, next) => {
   try {
-    const listingId = req.params.id as string;
-    const rows = await listMessagesForListing(listingId);
+    const listing = await findViewableListing(req.params.id as string, req.userId);
+    // TV show store products have no seller Q&A.
+    if (listing.store_id) {
+      res.json([]);
+      return;
+    }
+    const rows = await listMessagesForListing(listing.id);
     res.json(rows.map(toApiMessage));
   } catch (err) {
     next(err);
@@ -162,8 +197,8 @@ listingsRouter.post("/:id/messages", requireAuth, async (req, res, next) => {
   try {
     const listingId = req.params.id as string;
     const { body } = postMessageSchema.parse(req.body);
-    const listing = await findListingById(listingId);
-    if (!listing) throw notFound("Listing not found");
+    const listing = await findViewableListing(listingId, req.userId);
+    if (listing.store_id) throw badRequest("Store products don't take questions");
 
     const message = await createMessage(listingId, req.userId!, body);
 

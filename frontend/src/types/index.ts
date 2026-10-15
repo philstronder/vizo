@@ -33,6 +33,7 @@ export interface Listing {
   status: ListingStatus;
   images: string[];
   sellerId: string;
+  storeId?: string; // set for TV-show store products; unset for community listings
   sellerName: string;
   sellerUnitNumber?: string;
   sellerBuildingName?: string;
@@ -52,6 +53,14 @@ export interface Listing {
   auctionEndsAt?: string;
   maxBidderId?: string;
   bids?: Bid[];
+}
+
+export interface Store {
+  id: string;
+  name: string;
+  description: string;
+  productCount: number;
+  createdAt: string;
 }
 
 export interface Message {

@@ -137,3 +137,25 @@ CREATE TABLE IF NOT EXISTS seller_reviews (
 );
 
 CREATE INDEX IF NOT EXISTS idx_seller_reviews_seller ON seller_reviews(seller_id);
+
+-- Admins create, edit and delete stores. Promote a user with:
+--   npm run user:make-admin -- someone@example.com
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- A store belongs to one TV show. Its QR code (shown on air) opens the store
+-- in the app, where anyone — signed in or not — can browse its products.
+-- Deleting a store soft-deletes it (deleted_at) because its listings may
+-- already be referenced by orders.
+CREATE TABLE IF NOT EXISTS stores (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name              TEXT NOT NULL,
+  description       TEXT NOT NULL DEFAULT '',
+  created_by        UUID NOT NULL REFERENCES users(id),
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted_at        TIMESTAMPTZ
+);
+
+-- Listings with a store_id are store products; listings without one belong
+-- to the seller's building community.
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS store_id UUID REFERENCES stores(id);
+CREATE INDEX IF NOT EXISTS idx_listings_store ON listings(store_id);

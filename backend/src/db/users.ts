@@ -8,6 +8,7 @@ export interface UserRow {
   building_name: string;
   unit_number: string;
   verified: boolean;
+  is_admin: boolean;
   created_at: Date;
 }
 
@@ -18,6 +19,7 @@ export interface PublicUser {
   buildingName: string;
   unitNumber: string;
   verified: boolean;
+  isAdmin: boolean;
   memberSince: string;
 }
 
@@ -29,6 +31,7 @@ export function toPublicUser(row: UserRow): PublicUser {
     buildingName: row.building_name,
     unitNumber: row.unit_number,
     verified: row.verified,
+    isAdmin: row.is_admin,
     memberSince: row.created_at.toISOString(),
   };
 }
@@ -83,6 +86,33 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<Us
   const { rows } = await pool.query<UserRow>(
     `UPDATE users SET name = $1, building_name = $2, unit_number = $3 WHERE id = $4 RETURNING *`,
     [input.name, input.buildingName, input.unitNumber, id]
+  );
+  return rows[0] ?? null;
+}
+
+export async function setUserAdmin(email: string, isAdmin: boolean): Promise<UserRow | null> {
+  const { rows } = await pool.query<UserRow>(
+    "UPDATE users SET is_admin = $1 WHERE email = $2 RETURNING *",
+    [isAdmin, email]
+  );
+  return rows[0] ?? null;
+}
+
+// Building names are typed in freely at sign-up, so communities are matched
+// case- and whitespace-insensitively.
+export function sameBuilding(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+export async function listAdmins(): Promise<UserRow[]> {
+  const { rows } = await pool.query<UserRow>("SELECT * FROM users WHERE is_admin ORDER BY name");
+  return rows;
+}
+
+export async function setUserAdminById(id: string, isAdmin: boolean): Promise<UserRow | null> {
+  const { rows } = await pool.query<UserRow>(
+    "UPDATE users SET is_admin = $1 WHERE id = $2 RETURNING *",
+    [isAdmin, id]
   );
   return rows[0] ?? null;
 }

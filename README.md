@@ -32,6 +32,25 @@ npm run dev              # http://localhost:3000
 Register an account at `/register` (address verification is a mocked file
 picker — any image "uploads" instantly) and you're in.
 
+## TV show stores
+
+Admins create a store per TV show at `/stores`. Each store page shows a QR
+code (downloadable as a PNG for broadcast) that links to `/tv/<storeId>`.
+Scanning it locks that browser tab to the store, and no account is needed to
+browse. Signing in or creating an account is only required at checkout.
+Everyone else sees only their own building's listings.
+
+Admins add and remove other admins at `/admins`. To create the first admin
+(or recover access), promote an existing account from the command line:
+
+```bash
+cd backend
+npm run user:make-admin -- someone@example.com   # add --revoke to undo
+```
+
+Set `NEXT_PUBLIC_APP_URL` in the frontend (e.g. `https://vizo.app`) so QR
+codes always point at the public site, even when generated from another host.
+
 ## Deploying
 
 See `backend/docs/aws-rds-setup.md` for setting up the Postgres database on
