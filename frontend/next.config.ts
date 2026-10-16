@@ -7,4 +7,8 @@ const nextConfig: NextConfig = {
   },
 };
 
+module.exports = {
+  allowedDevOrigins: ["ec2-3-129-206-222.us-east-2.compute.amazonaws.com"],
+};
+
 export default nextConfig;
