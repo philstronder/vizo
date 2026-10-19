@@ -25,6 +25,7 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  console.log("API_URL: ", API_URL);
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     credentials: "include",
@@ -56,8 +57,14 @@ export interface AuthUser {
   memberSince: string;
 }
 
-export async function login(email: string, password: string): Promise<AuthUser> {
-  return request("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+export async function login(
+  email: string,
+  password: string,
+): Promise<AuthUser> {
+  return request("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
 }
 
 export interface RegisterPayload {
@@ -69,7 +76,10 @@ export interface RegisterPayload {
 }
 
 export async function register(payload: RegisterPayload): Promise<AuthUser> {
-  return request("/api/auth/register", { method: "POST", body: JSON.stringify(payload) });
+  return request("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function logout(): Promise<void> {
@@ -91,8 +101,13 @@ export interface UpdateProfilePayload {
   unitNumber: string;
 }
 
-export async function updateProfile(payload: UpdateProfilePayload): Promise<AuthUser> {
-  return request("/api/auth/me", { method: "PATCH", body: JSON.stringify(payload) });
+export async function updateProfile(
+  payload: UpdateProfilePayload,
+): Promise<AuthUser> {
+  return request("/api/auth/me", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
 }
 
 // ---- listings ---------------------------------------------------------
@@ -115,7 +130,9 @@ function toQueryString(query: object): string {
   return qs ? `?${qs}` : "";
 }
 
-export async function fetchListings(query: ListingQuery = {}): Promise<Listing[]> {
+export async function fetchListings(
+  query: ListingQuery = {},
+): Promise<Listing[]> {
   return request(`/api/listings${toQueryString(query)}`);
 }
 
@@ -136,8 +153,13 @@ export interface CreateListingPayload {
   storeId?: string;
 }
 
-export async function createListing(payload: CreateListingPayload): Promise<Listing> {
-  return request("/api/listings", { method: "POST", body: JSON.stringify(payload) });
+export async function createListing(
+  payload: CreateListingPayload,
+): Promise<Listing> {
+  return request("/api/listings", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function deleteListing(id: string): Promise<void> {
@@ -148,7 +170,10 @@ export async function fetchBids(listingId: string): Promise<Bid[]> {
   return request(`/api/listings/${listingId}/bids`);
 }
 
-export async function placeBid(listingId: string, amount: number): Promise<Listing> {
+export async function placeBid(
+  listingId: string,
+  amount: number,
+): Promise<Listing> {
   return request(`/api/listings/${listingId}/bids`, {
     method: "POST",
     body: JSON.stringify({ amount }),
@@ -159,7 +184,10 @@ export async function fetchMessages(listingId: string): Promise<Message[]> {
   return request(`/api/listings/${listingId}/messages`);
 }
 
-export async function postMessage(listingId: string, body: string): Promise<Message> {
+export async function postMessage(
+  listingId: string,
+  body: string,
+): Promise<Message> {
   return request(`/api/listings/${listingId}/messages`, {
     method: "POST",
     body: JSON.stringify({ body }),
@@ -182,11 +210,20 @@ export async function fetchStore(id: string): Promise<Store> {
 }
 
 export async function createStore(payload: StorePayload): Promise<Store> {
-  return request("/api/stores", { method: "POST", body: JSON.stringify(payload) });
+  return request("/api/stores", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
-export async function updateStore(id: string, payload: StorePayload): Promise<Store> {
-  return request(`/api/stores/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
+export async function updateStore(
+  id: string,
+  payload: StorePayload,
+): Promise<Store> {
+  return request(`/api/stores/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function deleteStore(id: string): Promise<void> {
@@ -200,7 +237,10 @@ export async function fetchAdmins(): Promise<AuthUser[]> {
 }
 
 export async function addAdmin(email: string): Promise<AuthUser> {
-  return request("/api/admins", { method: "POST", body: JSON.stringify({ email }) });
+  return request("/api/admins", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
 }
 
 export async function removeAdmin(userId: string): Promise<void> {
@@ -216,7 +256,10 @@ export interface CheckoutPayload {
 }
 
 export async function checkout(payload: CheckoutPayload): Promise<Order> {
-  return request("/api/orders", { method: "POST", body: JSON.stringify(payload) });
+  return request("/api/orders", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function fetchMyOrders(): Promise<Order[]> {
@@ -227,8 +270,14 @@ export async function completeOrder(id: string): Promise<Order> {
   return request(`/api/orders/${id}/complete`, { method: "PATCH" });
 }
 
-export async function reviewOrder(id: string, payload: { rating: number; comment?: string }): Promise<Order> {
-  return request(`/api/orders/${id}/review`, { method: "POST", body: JSON.stringify(payload) });
+export async function reviewOrder(
+  id: string,
+  payload: { rating: number; comment?: string },
+): Promise<Order> {
+  return request(`/api/orders/${id}/review`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 // ---- notifications ----------------------------------------------------
