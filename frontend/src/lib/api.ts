@@ -25,7 +25,6 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  console.log("API_URL: ", API_URL);
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     credentials: "include",
