@@ -14,7 +14,9 @@ import type {
   Store,
 } from "@/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+// Empty by default: requests go to the same origin and Next rewrites /api/*
+// to the backend (see BACKEND_URL in next.config.ts).
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export class ApiError extends Error {
   status: number;
