@@ -87,6 +87,14 @@ const createListingSchema = z
   .refine((data) => data.type !== "auction" || data.startingPrice !== undefined, {
     message: "startingPrice is required for auction listings",
     path: ["startingPrice"],
+  })
+  .refine((data) => data.storeId === undefined || data.type === "direct", {
+    message: "store products must be direct sale listings",
+    path: ["type"],
+  })
+  .refine((data) => data.storeId === undefined || data.condition === "new", {
+    message: "store products must be new",
+    path: ["condition"],
   });
 
 listingsRouter.post("/", requireAuth, async (req, res, next) => {

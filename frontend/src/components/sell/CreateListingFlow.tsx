@@ -27,7 +27,8 @@ export function CreateListingFlow({ storeId }: { storeId?: string }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<ListingCategory>("furniture");
-  const [condition, setCondition] = useState<ListingCondition>("used-good");
+  // TV show store products are always new, so their condition isn't asked for.
+  const [condition, setCondition] = useState<ListingCondition>(storeId ? "new" : "used-good");
   const [type, setType] = useState<ListingType>("direct");
 
   const [price, setPrice] = useState<number | "">("");
@@ -106,7 +107,7 @@ export function CreateListingFlow({ storeId }: { storeId?: string }) {
                   placeholder={t.sell.descriptionPlaceholder}
                 />
               </FieldGroup>
-              <div className="grid grid-cols-2 gap-4">
+              <div className={cn("grid gap-4", storeId ? "grid-cols-1" : "grid-cols-2")}>
                 <FieldGroup label={t.sell.category}>
                   <Select value={category} onChange={(e) => setCategory(e.target.value as ListingCategory)}>
                     {(Object.keys(t.listing.category) as ListingCategory[]).map((c) => (
@@ -116,49 +117,54 @@ export function CreateListingFlow({ storeId }: { storeId?: string }) {
                     ))}
                   </Select>
                 </FieldGroup>
-                <FieldGroup label={t.sell.condition}>
-                  <Select value={condition} onChange={(e) => setCondition(e.target.value as ListingCondition)}>
-                    {(Object.keys(t.listing.condition) as ListingCondition[]).map((c) => (
-                      <option key={c} value={c}>
-                        {t.listing.condition[c]}
-                      </option>
-                    ))}
-                  </Select>
-                </FieldGroup>
+                {!storeId && (
+                  <FieldGroup label={t.sell.condition}>
+                    <Select value={condition} onChange={(e) => setCondition(e.target.value as ListingCondition)}>
+                      {(Object.keys(t.listing.condition) as ListingCondition[]).map((c) => (
+                        <option key={c} value={c}>
+                          {t.listing.condition[c]}
+                        </option>
+                      ))}
+                    </Select>
+                  </FieldGroup>
+                )}
               </div>
 
-              <FieldGroup label={t.sell.selectType}>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <label
-                    className={cn(
-                      "flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-colors",
-                      type === "direct" ? "border-amber-500 bg-amber-100/40" : "border-line-strong"
-                    )}
-                  >
-                    <Radio label="" name="type" checked={type === "direct"} onChange={() => setType("direct")} />
-                    <div>
-                      <p className="flex items-center gap-1.5 text-sm font-semibold text-ink">
-                        <Tag size={14} /> {t.listing.directSale}
-                      </p>
-                      <p className="text-xs text-ink-400">{t.sell.directHint}</p>
-                    </div>
-                  </label>
-                  <label
-                    className={cn(
-                      "flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-colors",
-                      type === "auction" ? "border-amber-500 bg-amber-100/40" : "border-line-strong"
-                    )}
-                  >
-                    <Radio label="" name="type" checked={type === "auction"} onChange={() => setType("auction")} />
-                    <div>
-                      <p className="flex items-center gap-1.5 text-sm font-semibold text-ink">
-                        <Gavel size={14} /> {t.sell.auctionLabel}
-                      </p>
-                      <p className="text-xs text-ink-400">{t.sell.auctionHint}</p>
-                    </div>
-                  </label>
-                </div>
-              </FieldGroup>
+              {/* TV show store products are always direct sales, so there's no type to pick. */}
+              {!storeId && (
+                <FieldGroup label={t.sell.selectType}>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label
+                      className={cn(
+                        "flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-colors",
+                        type === "direct" ? "border-amber-500 bg-amber-100/40" : "border-line-strong"
+                      )}
+                    >
+                      <Radio label="" name="type" checked={type === "direct"} onChange={() => setType("direct")} />
+                      <div>
+                        <p className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+                          <Tag size={14} /> {t.listing.directSale}
+                        </p>
+                        <p className="text-xs text-ink-400">{t.sell.directHint}</p>
+                      </div>
+                    </label>
+                    <label
+                      className={cn(
+                        "flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-colors",
+                        type === "auction" ? "border-amber-500 bg-amber-100/40" : "border-line-strong"
+                      )}
+                    >
+                      <Radio label="" name="type" checked={type === "auction"} onChange={() => setType("auction")} />
+                      <div>
+                        <p className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+                          <Gavel size={14} /> {t.sell.auctionLabel}
+                        </p>
+                        <p className="text-xs text-ink-400">{t.sell.auctionHint}</p>
+                      </div>
+                    </label>
+                  </div>
+                </FieldGroup>
+              )}
 
               <Button fullWidth disabled={!step1Valid} onClick={() => setStep(1)}>
                 {t.common.next}
@@ -181,13 +187,16 @@ export function CreateListingFlow({ storeId }: { storeId?: string }) {
               <FieldGroup label={t.sell.photos}>
                 <PhotoUploader photos={photos} onChange={setPhotos} />
               </FieldGroup>
-              <FieldGroup label={t.sell.contactInfo} hint={t.sell.contactHint}>
-                <Input
-                  value={contactInfo}
-                  onChange={(e) => setContactInfo(e.target.value)}
-                  placeholder={t.sell.contactPlaceholder}
-                />
-              </FieldGroup>
+              {/* TV show store products don't need pickup coordination with a seller. */}
+              {!storeId && (
+                <FieldGroup label={t.sell.contactInfo} hint={t.sell.contactHint}>
+                  <Input
+                    value={contactInfo}
+                    onChange={(e) => setContactInfo(e.target.value)}
+                    placeholder={t.sell.contactPlaceholder}
+                  />
+                </FieldGroup>
+              )}
               {error && <p className="mb-3 text-sm font-medium text-danger">{error}</p>}
               <div className="flex gap-3">
                 <Button variant="secondary" onClick={() => setStep(0)}>
