@@ -216,6 +216,8 @@ export const enUS = {
     error: "Unable to publish listing",
     storeTitle: "Add a Store Product",
     storeSubtitle: "This product will be listed in the TV show's store, visible to anyone who scans its QR code.",
+    quantity: "Units in stock",
+    quantityHint: "How many of this product are available to sell.",
   },
 
   photos: {
@@ -332,6 +334,13 @@ export const enUS = {
     officialProduct: "TV show store",
     purchased: "Order placed! The seller will contact you about delivery.",
     signInToBuy: "Sign in or create an account to buy.",
+    inStock: (n: number) => `${n} ${n === 1 ? "unit" : "units"} in stock`,
+    soldOut: "Sold out",
+    soldOutHint: "All units were sold. Add more to put it back on sale.",
+    unitsToAdd: "Units to add",
+    addUnits: "Add units",
+    restockAndPublish: "Add and re-publish",
+    restockError: "Unable to update the stock",
   },
 
   admins: {

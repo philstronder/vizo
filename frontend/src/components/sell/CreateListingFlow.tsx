@@ -36,9 +36,13 @@ export function CreateListingFlow({ storeId }: { storeId?: string }) {
   const [startingPrice, setStartingPrice] = useState<number | "">("");
   const [duration, setDuration] = useState<"1" | "3" | "7">("3");
   const [photos, setPhotos] = useState<string[]>([]);
+  // Store products can stock several units; community listings are single items.
+  const [quantity, setQuantity] = useState<number | "">(1);
 
   const step1Valid = title.trim().length > 0 && description.trim().length > 0;
-  const step2Valid = type === "direct" ? price !== "" && Number(price) > 0 : startingPrice !== "" && Number(startingPrice) > 0;
+  const step2Valid =
+    (type === "direct" ? price !== "" && Number(price) > 0 : startingPrice !== "" && Number(startingPrice) > 0) &&
+    (!storeId || (Number.isInteger(quantity) && Number(quantity) >= 1));
 
   async function handlePublish() {
     setPublishing(true);
@@ -55,6 +59,7 @@ export function CreateListingFlow({ storeId }: { storeId?: string }) {
         startingPrice: type === "auction" ? Number(startingPrice) : undefined,
         auctionDurationDays: type === "auction" ? (Number(duration) as 1 | 3 | 7) : undefined,
         storeId,
+        quantity: storeId ? Number(quantity) : undefined,
       });
       router.push(storeId ? storeHref(storeId) : `/listing/${listing.id}`);
     } catch (err) {
@@ -184,6 +189,17 @@ export function CreateListingFlow({ storeId }: { storeId?: string }) {
                   placeholder="75"
                 />
               </FieldGroup>
+              {storeId && (
+                <FieldGroup label={t.sell.quantity} hint={t.sell.quantityHint}>
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value === "" ? "" : Number(e.target.value))}
+                  />
+                </FieldGroup>
+              )}
               <FieldGroup label={t.sell.photos}>
                 <PhotoUploader photos={photos} onChange={setPhotos} />
               </FieldGroup>

@@ -69,8 +69,8 @@ export interface CreateOrderInput {
 }
 
 // Buying a listing transactionally: locks the listing, verifies it's
-// purchasable, snapshots the agreed price, marks it sold, and creates the
-// order in one atomic unit.
+// purchasable, snapshots the agreed price, takes one unit (marking it sold
+// when none are left), and creates the order in one atomic unit.
 export async function checkoutListingTx(
   input: CreateOrderInput
 ): Promise<{ ok: true; orderId: string } | { ok: false; reason: string }> {
@@ -85,8 +85,9 @@ export async function checkoutListingTx(
       price: string | null;
       current_bid: string | null;
       max_bidder_id: string | null;
+      quantity: number;
     }>(
-      "SELECT id, seller_id, type, status, price, current_bid, max_bidder_id FROM listings WHERE id = $1 FOR UPDATE",
+      "SELECT id, seller_id, type, status, price, current_bid, max_bidder_id, quantity FROM listings WHERE id = $1 FOR UPDATE",
       [input.listingId]
     );
     const listing = rows[0];
@@ -98,7 +99,7 @@ export async function checkoutListingTx(
       await client.query("ROLLBACK");
       return { ok: false, reason: "You cannot buy your own listing" };
     }
-    if (listing.status !== "active") {
+    if (listing.status !== "active" || listing.quantity < 1) {
       await client.query("ROLLBACK");
       return { ok: false, reason: "This listing is no longer available" };
     }
@@ -108,7 +109,13 @@ export async function checkoutListingTx(
     }
 
     const price = Number(listing.type === "auction" ? listing.current_bid : listing.price);
-    await client.query("UPDATE listings SET status = 'sold' WHERE id = $1", [input.listingId]);
+    await client.query(
+      `UPDATE listings
+       SET quantity = quantity - 1,
+           status = CASE WHEN quantity - 1 = 0 THEN 'sold' ELSE status END
+       WHERE id = $1`,
+      [input.listingId]
+    );
     const { rows: orderRows } = await client.query<{ id: string }>(
       `INSERT INTO orders (listing_id, buyer_id, seller_id, price, pickup_location, pickup_time)
        VALUES ($1, $2, $3, $4, $5, $6)

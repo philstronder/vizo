@@ -32,6 +32,7 @@ export interface Listing {
   type: ListingType;
   status: ListingStatus;
   images: string[];
+  quantity: number; // units left to sell; always 1 (or 0 once sold) for community listings
   sellerId: string;
   storeId?: string; // set for TV-show store products; unset for community listings
   sellerName: string;

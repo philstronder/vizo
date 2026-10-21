@@ -214,6 +214,8 @@ export const ptBR: Dictionary = {
     error: "Não foi possível publicar o anúncio",
     storeTitle: "Adicionar Produto à Loja",
     storeSubtitle: "Este produto será listado na loja do programa de TV, visível para quem escanear o QR code.",
+    quantity: "Unidades em estoque",
+    quantityHint: "Quantas unidades deste produto estão disponíveis para venda.",
   },
 
   photos: {
@@ -329,6 +331,13 @@ export const ptBR: Dictionary = {
     officialProduct: "Loja do programa de TV",
     purchased: "Pedido realizado! O vendedor entrará em contato sobre a entrega.",
     signInToBuy: "Entre ou crie uma conta para comprar.",
+    inStock: (n) => `${n} ${n === 1 ? "unidade" : "unidades"} em estoque`,
+    soldOut: "Esgotado",
+    soldOutHint: "Todas as unidades foram vendidas. Adicione mais para voltar a vender.",
+    unitsToAdd: "Unidades a adicionar",
+    addUnits: "Adicionar unidades",
+    restockAndPublish: "Adicionar e republicar",
+    restockError: "Não foi possível atualizar o estoque",
   },
 
   admins: {

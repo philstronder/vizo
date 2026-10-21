@@ -8,6 +8,7 @@ import {
   listBidsForListing,
   listListings,
   placeBidTx,
+  restockListing,
   toApiBid,
   toApiListing,
 } from "../db/listings";
@@ -15,7 +16,7 @@ import { createMessage, listMessagesForListing, toApiMessage } from "../db/messa
 import { createNotification } from "../db/notifications";
 import { findStoreById } from "../db/stores";
 import { findUserById } from "../db/users";
-import { requireAuth } from "../middleware/auth";
+import { requireAdmin, requireAuth } from "../middleware/auth";
 import { badRequest, forbidden, notFound, unauthorized } from "../lib/http-error";
 import { findViewableListing } from "../lib/listing-access";
 
@@ -79,6 +80,7 @@ const createListingSchema = z
     startingPrice: z.number().positive().optional(),
     auctionDurationDays: z.union([z.literal(1), z.literal(3), z.literal(7)]).optional(),
     storeId: z.string().min(1).optional(),
+    quantity: z.number().int().min(1).max(100000).optional(),
   })
   .refine((data) => data.type !== "direct" || data.price !== undefined, {
     message: "price is required for direct sale listings",
@@ -95,6 +97,10 @@ const createListingSchema = z
   .refine((data) => data.storeId === undefined || data.condition === "new", {
     message: "store products must be new",
     path: ["condition"],
+  })
+  .refine((data) => data.storeId !== undefined || data.quantity === undefined || data.quantity === 1, {
+    message: "only store products can have more than one unit",
+    path: ["quantity"],
   });
 
 listingsRouter.post("/", requireAuth, async (req, res, next) => {
@@ -114,6 +120,7 @@ listingsRouter.post("/", requireAuth, async (req, res, next) => {
       condition: input.condition,
       images: input.images,
       type: input.type,
+      quantity: input.quantity,
       price: input.price,
       startingPrice: input.startingPrice,
       auctionEndsAt:
@@ -142,6 +149,22 @@ listingsRouter.delete("/:id", requireAuth, async (req, res, next) => {
     const deleted = await deleteListing(listingId, req.userId!);
     if (!deleted) throw notFound("Listing not found, or you don't own it");
     res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+const restockSchema = z.object({ quantity: z.number().int().min(1).max(100000) });
+
+// Admins add units to a store product, which also re-publishes it once sold out.
+listingsRouter.post("/:id/restock", requireAdmin, async (req, res, next) => {
+  try {
+    const listingId = req.params.id as string;
+    const { quantity } = restockSchema.parse(req.body);
+    const restocked = await restockListing(listingId, quantity);
+    if (!restocked) throw notFound("Store product not found, or it can't be restocked");
+    const listing = await findListingById(listingId);
+    res.json(toApiListing(listing!));
   } catch (err) {
     next(err);
   }

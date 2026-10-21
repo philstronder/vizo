@@ -152,6 +152,7 @@ export interface CreateListingPayload {
   startingPrice?: number;
   auctionDurationDays?: 1 | 3 | 7;
   storeId?: string;
+  quantity?: number;
 }
 
 export async function createListing(
@@ -160,6 +161,17 @@ export async function createListing(
   return request("/api/listings", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+// Adds units to a store product (admins only), re-publishing it if it was sold out.
+export async function restockListing(
+  id: string,
+  quantity: number,
+): Promise<Listing> {
+  return request(`/api/listings/${id}/restock`, {
+    method: "POST",
+    body: JSON.stringify({ quantity }),
   });
 }
 

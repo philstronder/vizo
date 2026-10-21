@@ -16,6 +16,7 @@ export interface ListingRow {
   type: "direct" | "auction";
   status: string;
   images: string[];
+  quantity: number;
   price: string | null;
   starting_price: string | null;
   current_bid: string | null;
@@ -52,6 +53,7 @@ export function toApiListing(row: ListingRow) {
     type: row.type,
     status: row.status,
     images: row.images,
+    quantity: row.quantity,
     sellerId: row.seller_id,
     storeId: row.store_id ?? undefined,
     sellerName: row.seller_name,
@@ -131,6 +133,7 @@ export interface CreateListingInput {
   condition: string;
   images: string[];
   type: "direct" | "auction";
+  quantity?: number;
   price?: number;
   startingPrice?: number;
   auctionEndsAt?: Date;
@@ -139,8 +142,8 @@ export interface CreateListingInput {
 export async function createListing(input: CreateListingInput): Promise<ListingRow> {
   const { rows } = await pool.query<{ id: string }>(
     `INSERT INTO listings
-      (seller_id, title, description, category, condition, type, images, price, starting_price, current_bid, auction_ends_at, store_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10, $11)
+      (seller_id, title, description, category, condition, type, images, price, starting_price, current_bid, auction_ends_at, store_id, quantity)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10, $11, $12)
      RETURNING id`,
     [
       input.sellerId,
@@ -154,6 +157,7 @@ export async function createListing(input: CreateListingInput): Promise<ListingR
       input.startingPrice ?? null,
       input.auctionEndsAt ?? null,
       input.storeId ?? null,
+      input.quantity ?? 1,
     ]
   );
   const created = await findListingById(rows[0].id);
@@ -170,6 +174,19 @@ export async function deleteListing(id: string, sellerId: string): Promise<boole
 
 export async function markListingSold(id: string): Promise<void> {
   await pool.query("UPDATE listings SET status = 'sold' WHERE id = $1", [id]);
+}
+
+// Adds units to a store product and puts it back on sale. Products of deleted
+// stores, and community listings, can't be restocked.
+export async function restockListing(id: string, units: number): Promise<boolean> {
+  const { rowCount } = await pool.query(
+    `UPDATE listings l SET quantity = l.quantity + $2, status = 'active'
+     FROM stores s
+     WHERE l.id = $1 AND s.id = l.store_id AND s.deleted_at IS NULL
+       AND l.type = 'direct' AND l.status IN ('active', 'sold')`,
+    [id, units]
+  );
+  return (rowCount ?? 0) > 0;
 }
 
 export interface BidRow {

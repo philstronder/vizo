@@ -10,6 +10,7 @@ import { useConfineToStore, useStoreMode } from "@/lib/store-mode";
 import { Button } from "@/components/ui/Button";
 import { ListingCard } from "@/components/listings/ListingCard";
 import { StoreFormModal } from "./StoreFormModal";
+import { StoreProductStock } from "./StoreProductStock";
 import { StoreQrCode } from "./StoreQrCode";
 import { useI18n } from "@/i18n/I18nProvider";
 
@@ -118,7 +119,18 @@ export function StoreView({ storeId, purchased }: { storeId: string; purchased: 
         {products.length > 0 ? (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 content-start">
             {products.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
+              <div key={listing.id} className="flex flex-col gap-2">
+                <ListingCard listing={listing} />
+                {/* Products of a deleted store are "ended" and can't be restocked. */}
+                {showAdminTools && listing.status !== "ended" && (
+                  <StoreProductStock
+                    listing={listing}
+                    onRestocked={(updated) =>
+                      setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+                    }
+                  />
+                )}
+              </div>
             ))}
           </div>
         ) : (

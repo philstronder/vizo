@@ -159,3 +159,14 @@ CREATE TABLE IF NOT EXISTS stores (
 -- to the seller's building community.
 ALTER TABLE listings ADD COLUMN IF NOT EXISTS store_id UUID REFERENCES stores(id);
 CREATE INDEX IF NOT EXISTS idx_listings_store ON listings(store_id);
+
+-- Units left to sell. Community listings are single items; store products can
+-- stock several. Checkout takes one unit and marks the listing sold at 0, and
+-- admins restock sold-out store products to put them back on sale.
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS quantity INTEGER NOT NULL DEFAULT 1;
+DO $$ BEGIN
+  ALTER TABLE listings ADD CONSTRAINT listing_quantity_not_negative CHECK (quantity >= 0);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+-- Listings sold before the column existed were single items; leave none of them in stock.
+UPDATE listings SET quantity = 0 WHERE status = 'sold' AND quantity > 0;

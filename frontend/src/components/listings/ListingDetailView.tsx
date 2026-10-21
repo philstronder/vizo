@@ -137,19 +137,31 @@ export function ListingDetailView({ listingId }: { listingId: string }) {
         </div>
 
         <div>
-          <div className="mb-2 flex items-center gap-2">
-            {isAuction ? (
-              <Badge tone="amber">
-                <Gavel size={12} /> {t.listing.auction}
-              </Badge>
-            ) : (
-              <Badge tone="info">
-                <Tag size={12} /> {t.listing.directSale}
-              </Badge>
-            )}
-            <Badge tone="neutral">{t.listing.condition[listing.condition]}</Badge>
-            {ended && <Badge tone="danger">{listing.status === "sold" ? t.listing.status.sold : t.listing.status.ended}</Badge>}
-          </div>
+          {/* TV show store products are always new, direct-sale items, so only their sold/ended state is shown. */}
+          {(!isStoreProduct || ended) && (
+            <div className="mb-2 flex items-center gap-2">
+              {!isStoreProduct &&
+                (isAuction ? (
+                  <Badge tone="amber">
+                    <Gavel size={12} /> {t.listing.auction}
+                  </Badge>
+                ) : (
+                  <Badge tone="info">
+                    <Tag size={12} /> {t.listing.directSale}
+                  </Badge>
+                ))}
+              {!isStoreProduct && <Badge tone="neutral">{t.listing.condition[listing.condition]}</Badge>}
+              {ended && (
+                <Badge tone="danger">
+                  {listing.status === "sold"
+                    ? isStoreProduct
+                      ? t.store.soldOut
+                      : t.listing.status.sold
+                    : t.listing.status.ended}
+                </Badge>
+              )}
+            </div>
+          )}
 
           <h1 className="mb-1 text-2xl font-black text-ink">{listing.title}</h1>
           <p className="mb-5 flex items-center gap-1 text-sm text-ink-400">
@@ -209,7 +221,7 @@ export function ListingDetailView({ listingId }: { listingId: string }) {
                 </>
               ) : (
                 <>
-                  <p className="text-xs text-ink-400">{t.listing.fixedPrice}</p>
+                  {!isStoreProduct && <p className="text-xs text-ink-400">{t.listing.fixedPrice}</p>}
                   <p className="mb-4 text-3xl font-black text-ink">{formatCurrency(listing.price ?? 0, locale)}</p>
                   {ended ? (
                     <Button fullWidth disabled>
