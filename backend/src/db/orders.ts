@@ -1,6 +1,18 @@
 import { pool } from "./pool";
+import { toDeliveryAddress, type UserRow } from "./users";
 
-export interface OrderRow {
+// The buyer's address_* columns are joined in for store order deliveries.
+export interface OrderRow
+  extends Pick<
+    UserRow,
+    | "address_postal_code"
+    | "address_street"
+    | "address_number"
+    | "address_complement"
+    | "address_district"
+    | "address_city"
+    | "address_state"
+  > {
   id: string;
   listing_id: string;
   listing_title: string;
@@ -16,7 +28,10 @@ export interface OrderRow {
   pickup_time: string | null;
   created_at: Date;
   review_rating: number | null;
+  store_id: string | null;
+  buyer_phone: string | null;
 }
+
 
 const ORDER_SELECT = `
   SELECT
@@ -25,7 +40,16 @@ const ORDER_SELECT = `
     (CASE WHEN array_length(l.images, 1) > 0 THEN l.images[1] ELSE NULL END) AS listing_image,
     buyer.name AS buyer_name,
     seller.name AS seller_name,
-    r.rating AS review_rating
+    r.rating AS review_rating,
+    l.store_id,
+    buyer.phone AS buyer_phone,
+    buyer.address_postal_code,
+    buyer.address_street,
+    buyer.address_number,
+    buyer.address_complement,
+    buyer.address_district,
+    buyer.address_city,
+    buyer.address_state
   FROM orders o
   JOIN listings l ON l.id = o.listing_id
   JOIN users buyer ON buyer.id = o.buyer_id
@@ -33,6 +57,8 @@ const ORDER_SELECT = `
   LEFT JOIN seller_reviews r ON r.order_id = o.id
 `;
 
+// Store products are delivered, so their orders carry the buyer's phone and
+// delivery address for the store admin (and the buyer) to see.
 export function toApiOrder(row: OrderRow) {
   return {
     id: row.id,
@@ -50,6 +76,8 @@ export function toApiOrder(row: OrderRow) {
     pickupTime: row.pickup_time ?? undefined,
     createdAt: row.created_at.toISOString(),
     reviewRating: row.review_rating ?? undefined,
+    buyerPhone: row.store_id ? (row.buyer_phone ?? undefined) : undefined,
+    deliveryAddress: row.store_id ? toDeliveryAddress(row) : undefined,
   };
 }
 

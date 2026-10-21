@@ -4,6 +4,7 @@
 
 import type {
   Bid,
+  DeliveryAddress,
   Listing,
   ListingCategory,
   ListingCondition,
@@ -51,8 +52,11 @@ export interface AuthUser {
   id: string;
   name: string;
   email: string;
-  buildingName: string;
-  unitNumber: string;
+  // Unset for TV store viewer accounts, which have a phone and address instead.
+  buildingName?: string;
+  unitNumber?: string;
+  phone?: string;
+  deliveryAddress?: DeliveryAddress;
   verified: boolean;
   isAdmin: boolean;
   memberSince: string;
@@ -68,13 +72,16 @@ export async function login(
   });
 }
 
-export interface RegisterPayload {
+// Building residents join their building's community; TV store viewers
+// only shop in stores and give a phone and delivery address instead.
+export type RegisterPayload = {
   name: string;
   email: string;
   password: string;
-  unitNumber: string;
-  buildingName: string;
-}
+} & (
+  | { accountType: "resident"; unitNumber: string; buildingName: string }
+  | { accountType: "viewer"; phone: string; deliveryAddress: DeliveryAddress }
+);
 
 export async function register(payload: RegisterPayload): Promise<AuthUser> {
   return request("/api/auth/register", {
@@ -96,10 +103,13 @@ export async function fetchMe(): Promise<AuthUser | null> {
   }
 }
 
+// Omitted fields keep their saved value.
 export interface UpdateProfilePayload {
   name: string;
-  buildingName: string;
-  unitNumber: string;
+  buildingName?: string;
+  unitNumber?: string;
+  phone?: string;
+  deliveryAddress?: DeliveryAddress;
 }
 
 export async function updateProfile(

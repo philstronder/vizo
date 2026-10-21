@@ -3,6 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { ViewerHome } from "@/components/account/ViewerHome";
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -15,6 +16,13 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (loading || !user) return null;
   return <>{children}</>;
+}
+
+// Community pages: TV store viewer accounts have no building, so they get the
+// viewer home instead.
+export function RequireCommunity({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  return <RequireAuth>{user && !user.buildingName ? <ViewerHome /> : children}</RequireAuth>;
 }
 
 // Signed-in non-admins are sent back to their community feed.

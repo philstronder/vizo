@@ -5,8 +5,8 @@ export interface ListingRow {
   seller_id: string;
   store_id: string | null;
   seller_name: string;
-  seller_unit_number: string;
-  seller_building_name: string;
+  seller_unit_number: string | null;
+  seller_building_name: string | null;
   seller_verified: boolean;
   seller_member_since: Date;
   title: string;
@@ -57,8 +57,8 @@ export function toApiListing(row: ListingRow) {
     sellerId: row.seller_id,
     storeId: row.store_id ?? undefined,
     sellerName: row.seller_name,
-    sellerUnitNumber: row.seller_unit_number,
-    sellerBuildingName: row.seller_building_name,
+    sellerUnitNumber: row.seller_unit_number ?? undefined,
+    sellerBuildingName: row.seller_building_name ?? undefined,
     sellerVerified: row.seller_verified,
     sellerMemberSince: row.seller_member_since.toISOString(),
     sellerRating: row.seller_rating !== null ? Number(row.seller_rating) : undefined,

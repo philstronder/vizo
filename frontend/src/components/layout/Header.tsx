@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { useI18n } from "@/i18n/I18nProvider";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { storeHref, useStoreMode } from "@/lib/store-mode";
+import { cn } from "@/lib/cn";
 
 export function Header() {
   const [query, setQuery] = useState("");
@@ -22,6 +23,8 @@ export function Header() {
   const { t } = useI18n();
   const storeMode = useStoreMode();
   const unreadCount = user ? notificationCount : 0;
+  // TV store viewer accounts have no building community to search or list in.
+  const isViewer = !!user && !user.buildingName;
 
   useEffect(() => {
     if (!user || storeMode) return;
@@ -72,23 +75,25 @@ export function Header() {
 
         {user && (
           <span className="hidden lg:inline text-sm text-ink-400 border-l border-line pl-4">
-            {t.header.buildingMarketplace(user.buildingName)}
+            {user.buildingName ? t.header.buildingMarketplace(user.buildingName) : t.header.tvStoreAccount}
           </span>
         )}
 
-        <form onSubmit={handleSearch} className="ml-auto flex-1 max-w-md hidden sm:block">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" size={16} />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t.header.searchPlaceholder}
-              className="w-full rounded-full border border-line-strong bg-paper py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-amber/60 focus:border-amber-500"
-            />
-          </div>
-        </form>
+        {!isViewer && (
+          <form onSubmit={handleSearch} className="ml-auto flex-1 max-w-md hidden sm:block">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" size={16} />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t.header.searchPlaceholder}
+                className="w-full rounded-full border border-line-strong bg-paper py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-amber/60 focus:border-amber-500"
+              />
+            </div>
+          </form>
+        )}
 
-        <div className="ml-auto sm:ml-0 flex items-center gap-1 sm:gap-2">
+        <div className={cn("ml-auto flex items-center gap-1 sm:gap-2", !isViewer && "sm:ml-0")}>
           <LanguageSwitcher />
           {user ? (
             <>
@@ -102,9 +107,11 @@ export function Header() {
                   </Button>
                 </>
               )}
-              <Button href="/sell/new" size="sm" className="hidden sm:inline-flex">
-                <Plus size={16} /> {t.header.newListing}
-              </Button>
+              {!isViewer && (
+                <Button href="/sell/new" size="sm" className="hidden sm:inline-flex">
+                  <Plus size={16} /> {t.header.newListing}
+                </Button>
+              )}
               <Link
                 href="/orders"
                 className="relative rounded-full p-2 text-ink-600 hover:bg-cream-100"
@@ -145,22 +152,26 @@ export function Header() {
 
       {mobileOpen && (
         <div className="border-t border-line bg-cream px-4 py-3 sm:hidden">
-          <form onSubmit={handleSearch} className="mb-3">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" size={16} />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={t.header.searchPlaceholder}
-                className="w-full rounded-full border border-line-strong bg-paper py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-amber/60"
-              />
-            </div>
-          </form>
+          {!isViewer && (
+            <form onSubmit={handleSearch} className="mb-3">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" size={16} />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={t.header.searchPlaceholder}
+                  className="w-full rounded-full border border-line-strong bg-paper py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-amber/60"
+                />
+              </div>
+            </form>
+          )}
           {user ? (
             <div className="flex flex-col gap-2">
-              <Button href="/sell/new" size="sm" fullWidth>
-                <Plus size={16} /> {t.header.newListing}
-              </Button>
+              {!isViewer && (
+                <Button href="/sell/new" size="sm" fullWidth>
+                  <Plus size={16} /> {t.header.newListing}
+                </Button>
+              )}
               {user.isAdmin && (
                 <>
                   <Button href="/stores" variant="secondary" size="sm" fullWidth>

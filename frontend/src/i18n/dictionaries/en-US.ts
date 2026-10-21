@@ -79,6 +79,7 @@ export const enUS = {
     signOut: "Sign out",
     signIn: "Sign In",
     join: "Join",
+    tvStoreAccount: "TV show stores account",
     stores: "Stores",
     admins: "Admins",
   },
@@ -95,6 +96,8 @@ export const enUS = {
       submit: "Sign In",
       submitting: "Signing in...",
       error: "Unable to sign in",
+      storeSubtitle: "Sign in to buy from the TV show's store",
+      createAccount: "Create an account",
     },
     register: {
       title: "Join your building's marketplace",
@@ -116,6 +119,13 @@ export const enUS = {
       submit: "Create Account",
       submitting: "Creating account...",
       verificationRequired: "Address verification is required before you can list or buy items.",
+      error: "Unable to create your account",
+    },
+    viewerRegister: {
+      title: "Create your account",
+      subtitle: "Buy the products you saw on the show and get them delivered to your home",
+      haveAccount: "Already have an account?",
+      yourDetails: "Your details",
       error: "Unable to create your account",
     },
   },
@@ -276,10 +286,14 @@ export const enUS = {
     unitNumber: "Unit Number",
     saveChanges: "Save Changes",
     saveError: "Unable to save changes",
+    noAddress: "No delivery address yet.",
+    joinBuildingTitle: "Join a building community (optional)",
+    joinBuildingHint: "Fill in both to buy and sell with your neighbors on VIZO.",
   },
 
   orders: {
     title: "Dashboard",
+    deliverTo: "Deliver to:",
     status: {
       pending_pickup: "Pending Pickup",
       ready_for_pickup: "Ready for Pickup",
@@ -341,6 +355,28 @@ export const enUS = {
     addUnits: "Add units",
     restockAndPublish: "Add and re-publish",
     restockError: "Unable to update the stock",
+  },
+
+  address: {
+    phone: "Phone",
+    phonePlaceholder: "(11) 91234-5678",
+    deliveryAddress: "Delivery address",
+    postalCode: "ZIP code",
+    street: "Street",
+    number: "Number",
+    complement: "Complement",
+    complementPlaceholder: "Apt, block (optional)",
+    district: "District",
+    city: "City",
+    state: "State",
+  },
+
+  viewer: {
+    title: "Your account is for TV show stores",
+    hint: "Scan the QR code shown on a TV show to shop in its store. You can follow your purchases in your orders.",
+    myOrders: "My orders",
+    profile: "My profile",
+    joinBuilding: "Live in a building that uses VIZO? Add it to your profile to join its marketplace.",
   },
 
   admins: {

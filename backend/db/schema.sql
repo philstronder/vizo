@@ -170,3 +170,17 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 -- Listings sold before the column existed were single items; leave none of them in stock.
 UPDATE listings SET quantity = 0 WHERE status = 'sold' AND quantity > 0;
+
+-- TV show viewers sign up from a store with a phone and a delivery address
+-- instead of a building. An account without a building only shops in TV
+-- stores; adding a building and unit in the profile joins that community.
+ALTER TABLE users ALTER COLUMN building_name DROP NOT NULL;
+ALTER TABLE users ALTER COLUMN unit_number DROP NOT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS address_postal_code TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS address_street TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS address_number TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS address_complement TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS address_district TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS address_city TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS address_state TEXT;

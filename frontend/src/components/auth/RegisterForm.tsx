@@ -9,15 +9,22 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/i18n/I18nProvider";
-import { safeNext, storeHref, useStoreMode } from "@/lib/store-mode";
+import { safeNext, useStoreMode } from "@/lib/store-mode";
 import { Camera, ShieldCheck } from "lucide-react";
+import { ViewerRegisterForm } from "./ViewerRegisterForm";
 
 // `next` is where to go once signed in, e.g. back to the product a store
-// viewer was about to buy.
+// viewer was about to buy. Viewers who came from a TV show's store get the
+// viewer sign-up; everyone else signs up as a building resident.
 export function RegisterForm({ next }: { next?: string }) {
-  const router = useRouter();
   const storeId = useStoreMode();
-  const destination = safeNext(next) ?? (storeId ? storeHref(storeId) : "/");
+  if (storeId === undefined) return null;
+  return storeId ? <ViewerRegisterForm storeId={storeId} next={next} /> : <ResidentRegisterForm next={next} />;
+}
+
+function ResidentRegisterForm({ next }: { next?: string }) {
+  const router = useRouter();
+  const destination = safeNext(next) ?? "/";
   const { register } = useAuth();
   const { t } = useI18n();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -40,7 +47,7 @@ export function RegisterForm({ next }: { next?: string }) {
     setSubmitting(true);
     setError(null);
     try {
-      await register({ name, email, password, unitNumber, buildingName });
+      await register({ accountType: "resident", name, email, password, unitNumber, buildingName });
       router.push(destination);
     } catch (err) {
       setError(err instanceof Error ? err.message : t.auth.register.error);

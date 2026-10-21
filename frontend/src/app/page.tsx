@@ -1,14 +1,14 @@
 import { Suspense } from "react";
 import { MarketplaceFeed } from "@/components/listings/MarketplaceFeed";
-import { RequireAuth } from "@/components/auth/RequireAuth";
+import { RequireCommunity } from "@/components/auth/RequireAuth";
 
-// The community feed is scoped to the viewer's building, so it needs an account.
+// The community feed is scoped to the viewer's building, so it needs a resident account.
 export default function HomePage() {
   return (
-    <RequireAuth>
+    <RequireCommunity>
       <Suspense fallback={null}>
         <MarketplaceFeed />
       </Suspense>
-    </RequireAuth>
+    </RequireCommunity>
   );
 }

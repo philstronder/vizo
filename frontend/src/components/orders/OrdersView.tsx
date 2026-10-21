@@ -17,7 +17,8 @@ import { RateSellerModal } from "./RateSellerModal";
 import { PlaceholderImage } from "@/components/listings/PlaceholderImage";
 import { formatCurrency, formatDate, formatRelativeTime } from "@/lib/format";
 import type { Notification, NotificationType, Order, OrderStatus } from "@/types";
-import { Bell, CheckCheck, CircleCheck, Gavel, MessageSquare, PackageCheck, Star, Tag } from "lucide-react";
+import { Bell, CheckCheck, CircleCheck, Gavel, MapPin, MessageSquare, PackageCheck, Star, Tag } from "lucide-react";
+import { formatAddress } from "@/components/account/DeliveryAddressFields";
 import Link from "next/link";
 import { useI18n } from "@/i18n/I18nProvider";
 
@@ -84,6 +85,15 @@ function OrderRow({
           <Badge tone={statusTone[order.status]}>{t.orders.status[order.status]}</Badge>
         </div>
       </div>
+      {role === "seller" && order.deliveryAddress && (
+        <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-cream-100 px-3 py-2 text-xs text-ink-600">
+          <MapPin size={13} className="mt-0.5 shrink-0" />
+          <span>
+            <span className="font-semibold">{t.orders.deliverTo}</span> {formatAddress(order.deliveryAddress)}
+            {order.buyerPhone && <> &middot; {order.buyerPhone}</>}
+          </span>
+        </p>
+      )}
       {role === "buyer" && order.status === "completed" && (
         <div className="mt-2 flex items-center justify-end gap-2">
           {order.reviewRating ? (

@@ -14,6 +14,16 @@ export interface User {
   memberSince: string;
 }
 
+export interface DeliveryAddress {
+  postalCode: string;
+  street: string;
+  number: string;
+  complement?: string;
+  district: string;
+  city: string;
+  state: string;
+}
+
 export interface Bid {
   id: string;
   listingId: string;
@@ -97,6 +107,9 @@ export interface Order {
   pickupTime?: string;
   createdAt: string;
   reviewRating?: number; // the buyer's 1–5 rating of the seller, once given
+  // Store orders are delivered: the buyer's phone and delivery address.
+  buyerPhone?: string;
+  deliveryAddress?: DeliveryAddress;
 }
 
 export type NotificationType =

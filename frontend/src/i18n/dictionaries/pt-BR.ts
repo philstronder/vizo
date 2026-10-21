@@ -77,6 +77,7 @@ export const ptBR: Dictionary = {
     signOut: "Sair",
     signIn: "Entrar",
     join: "Cadastrar",
+    tvStoreAccount: "Conta das lojas de TV",
     stores: "Lojas",
     admins: "Admins",
   },
@@ -93,6 +94,8 @@ export const ptBR: Dictionary = {
       submit: "Entrar",
       submitting: "Entrando...",
       error: "Não foi possível entrar",
+      storeSubtitle: "Entre para comprar na loja do programa de TV",
+      createAccount: "Criar uma conta",
     },
     register: {
       title: "Participe do marketplace do seu condomínio",
@@ -114,6 +117,13 @@ export const ptBR: Dictionary = {
       submit: "Criar Conta",
       submitting: "Criando conta...",
       verificationRequired: "A verificação de endereço é necessária antes de anunciar ou comprar itens.",
+      error: "Não foi possível criar sua conta",
+    },
+    viewerRegister: {
+      title: "Crie sua conta",
+      subtitle: "Compre os produtos que você viu no programa e receba em casa",
+      haveAccount: "Já tem uma conta?",
+      yourDetails: "Seus dados",
       error: "Não foi possível criar sua conta",
     },
   },
@@ -273,10 +283,14 @@ export const ptBR: Dictionary = {
     unitNumber: "Número da Unidade",
     saveChanges: "Salvar Alterações",
     saveError: "Não foi possível salvar as alterações",
+    noAddress: "Nenhum endereço de entrega cadastrado.",
+    joinBuildingTitle: "Participar da comunidade de um condomínio (opcional)",
+    joinBuildingHint: "Preencha os dois para comprar e vender com seus vizinhos no VIZO.",
   },
 
   orders: {
     title: "Painel",
+    deliverTo: "Entregar em:",
     status: {
       pending_pickup: "Aguardando Retirada",
       ready_for_pickup: "Pronto para Retirada",
@@ -338,6 +352,28 @@ export const ptBR: Dictionary = {
     addUnits: "Adicionar unidades",
     restockAndPublish: "Adicionar e republicar",
     restockError: "Não foi possível atualizar o estoque",
+  },
+
+  address: {
+    phone: "Telefone",
+    phonePlaceholder: "(11) 91234-5678",
+    deliveryAddress: "Endereço de entrega",
+    postalCode: "CEP",
+    street: "Rua",
+    number: "Número",
+    complement: "Complemento",
+    complementPlaceholder: "Apto, bloco (opcional)",
+    district: "Bairro",
+    city: "Cidade",
+    state: "Estado",
+  },
+
+  viewer: {
+    title: "Sua conta é para as lojas dos programas de TV",
+    hint: "Escaneie o QR code exibido em um programa de TV para comprar na loja dele. Acompanhe suas compras em seus pedidos.",
+    myOrders: "Meus pedidos",
+    profile: "Meu perfil",
+    joinBuilding: "Mora em um condomínio que usa o VIZO? Adicione-o ao seu perfil para participar do marketplace.",
   },
 
   admins: {

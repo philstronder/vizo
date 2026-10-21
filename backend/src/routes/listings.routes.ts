@@ -51,6 +51,7 @@ listingsRouter.get("/", async (req, res, next) => {
       if (!req.userId) throw unauthorized("Sign in to see your community's listings");
       const viewer = await findUserById(req.userId);
       if (!viewer) throw unauthorized();
+      if (viewer.building_name === null) throw forbidden("TV store accounts don't have a building community");
       scope = { buildingName: viewer.building_name };
     }
 
@@ -106,10 +107,13 @@ const createListingSchema = z
 listingsRouter.post("/", requireAuth, async (req, res, next) => {
   try {
     const input = createListingSchema.parse(req.body);
+    const seller = await findUserById(req.userId!);
+    if (!seller) throw unauthorized();
     if (input.storeId) {
-      const seller = await findUserById(req.userId!);
-      if (!seller?.is_admin) throw forbidden("Only admins can add products to a store");
+      if (!seller.is_admin) throw forbidden("Only admins can add products to a store");
       if (!(await findStoreById(input.storeId))) throw notFound("Store not found");
+    } else if (seller.building_name === null) {
+      throw forbidden("Add a building to your profile to list items in a community");
     }
     const listing = await createListing({
       sellerId: req.userId!,

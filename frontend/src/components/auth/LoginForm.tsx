@@ -40,12 +40,12 @@ export function LoginForm({ next }: { next?: string }) {
   return (
     <AuthShell
       title={t.auth.login.title}
-      subtitle={t.auth.login.subtitle}
+      subtitle={storeId ? t.auth.login.storeSubtitle : t.auth.login.subtitle}
       footer={
         <>
           {t.auth.login.newHere}{" "}
           <Link href={safeNext(next) ? `/register?next=${encodeURIComponent(destination)}` : "/register"} className="font-semibold text-amber-600 hover:underline">
-            {t.auth.login.verifyResidency}
+            {storeId ? t.auth.login.createAccount : t.auth.login.verifyResidency}
           </Link>
         </>
       }

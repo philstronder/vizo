@@ -21,17 +21,43 @@ function setAuthCookie(res: Response, userId: string) {
   res.cookie(AUTH_COOKIE_NAME, signAuthToken({ userId }), cookieOptions);
 }
 
-const registerSchema = z.object({
-  name: z.string().trim().min(1, "Name is required"),
-  email: z.email(),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  unitNumber: z.string().trim().min(1, "Unit number is required"),
-  buildingName: z.string().trim().min(1, "Building name is required"),
+const deliveryAddressSchema = z.object({
+  postalCode: z.string().trim().min(1, "Postal code is required"),
+  street: z.string().trim().min(1, "Street is required"),
+  number: z.string().trim().min(1, "Number is required"),
+  complement: z.string().trim().optional(),
+  district: z.string().trim().min(1, "District is required"),
+  city: z.string().trim().min(1, "City is required"),
+  state: z.string().trim().min(1, "State is required"),
 });
+
+const phoneSchema = z.string().trim().min(8, "Phone is required");
+
+// Building residents join their building's community; TV store viewers
+// (accountType "viewer") only shop in TV stores, so they give a phone and a
+// delivery address instead of a building.
+const registerSchema = z.discriminatedUnion("accountType", [
+  z.object({
+    accountType: z.literal("resident"),
+    name: z.string().trim().min(1, "Name is required"),
+    email: z.email(),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    unitNumber: z.string().trim().min(1, "Unit number is required"),
+    buildingName: z.string().trim().min(1, "Building name is required"),
+  }),
+  z.object({
+    accountType: z.literal("viewer"),
+    name: z.string().trim().min(1, "Name is required"),
+    email: z.email(),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    phone: phoneSchema,
+    deliveryAddress: deliveryAddressSchema,
+  }),
+]);
 
 authRouter.post("/register", async (req, res, next) => {
   try {
-    const input = registerSchema.parse(req.body);
+    const input = registerSchema.parse({ accountType: "resident", ...req.body });
     const existing = await findUserByEmail(input.email);
     if (existing) throw conflict("An account with this email already exists");
 
@@ -40,8 +66,9 @@ authRouter.post("/register", async (req, res, next) => {
       name: input.name,
       email: input.email,
       passwordHash,
-      buildingName: input.buildingName,
-      unitNumber: input.unitNumber,
+      ...(input.accountType === "viewer"
+        ? { phone: input.phone, deliveryAddress: input.deliveryAddress }
+        : { buildingName: input.buildingName, unitNumber: input.unitNumber }),
     });
 
     setAuthCookie(res, user.id);
@@ -87,11 +114,20 @@ authRouter.get("/me", requireAuth, async (req, res, next) => {
   }
 });
 
-const updateMeSchema = z.object({
-  name: z.string().trim().min(1, "Name is required"),
-  buildingName: z.string().trim().min(1, "Building name is required"),
-  unitNumber: z.string().trim().min(1, "Unit number is required"),
-});
+// Omitted fields keep their saved value. A building and unit go together, so
+// a viewer account can join a community but nobody can leave theirs.
+const updateMeSchema = z
+  .object({
+    name: z.string().trim().min(1, "Name is required"),
+    buildingName: z.string().trim().min(1, "Building name is required").optional(),
+    unitNumber: z.string().trim().min(1, "Unit number is required").optional(),
+    phone: phoneSchema.optional(),
+    deliveryAddress: deliveryAddressSchema.optional(),
+  })
+  .refine((data) => (data.buildingName === undefined) === (data.unitNumber === undefined), {
+    message: "Building name and unit number go together",
+    path: ["unitNumber"],
+  });
 
 authRouter.patch("/me", requireAuth, async (req, res, next) => {
   try {
