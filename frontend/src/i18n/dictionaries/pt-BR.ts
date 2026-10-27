@@ -38,8 +38,12 @@ export const ptBR: Dictionary = {
     category: {
       furniture: "Móveis",
       electronics: "Eletrônicos",
+      appliances: "Eletrodomésticos",
+      vehicles: "Veículos",
+      clothing: "Roupas",
       books: "Livros",
       plants: "Plantas",
+      services: "Serviços",
       other: "Outros",
     },
     condition: {

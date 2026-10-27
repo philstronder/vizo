@@ -1,7 +1,16 @@
 export type ListingType = "direct" | "auction";
 export type ListingCondition = "new" | "used-excellent" | "used-good";
 export type ListingStatus = "active" | "sold" | "ended" | "draft";
-export type ListingCategory = "furniture" | "electronics" | "books" | "plants" | "other";
+export type ListingCategory =
+  | "furniture"
+  | "electronics"
+  | "appliances"
+  | "vehicles"
+  | "clothing"
+  | "books"
+  | "plants"
+  | "services"
+  | "other";
 
 export interface User {
   id: string;

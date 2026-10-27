@@ -22,7 +22,7 @@ import { findViewableListing } from "../lib/listing-access";
 
 export const listingsRouter = Router();
 
-const categoryEnum = z.enum(["furniture", "electronics", "books", "plants", "other"]);
+const categoryEnum = z.enum(["furniture", "electronics", "appliances", "vehicles", "clothing", "books", "plants", "services", "other"]);
 const conditionEnum = z.enum(["new", "used-excellent", "used-good"]);
 
 listingsRouter.get("/", async (req, res, next) => {
