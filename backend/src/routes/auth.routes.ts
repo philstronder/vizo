@@ -1,9 +1,10 @@
 import { Router, type Response } from "express";
 import { z } from "zod";
-import { createUser, findUserByEmail, findUserById, toPublicUser, updateUser } from "../db/users";
+import { createUser, findUserByEmail, findUserById, sameBuilding, toPublicUser, updateUser } from "../db/users";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { AUTH_COOKIE_MAX_AGE_MS, AUTH_COOKIE_NAME, signAuthToken } from "../lib/jwt";
-import { conflict, notFound, unauthorized } from "../lib/http-error";
+import { findCondominiumByName } from "../db/condominiums";
+import { badRequest, conflict, notFound, unauthorized } from "../lib/http-error";
 import { requireAuth } from "../middleware/auth";
 import { env } from "../lib/env";
 
@@ -44,6 +45,7 @@ const registerSchema = z.discriminatedUnion("accountType", [
     password: z.string().min(6, "Password must be at least 6 characters"),
     unitNumber: z.string().trim().min(1, "Unit number is required"),
     buildingName: z.string().trim().min(1, "Building name is required"),
+    buildingBlock: z.string().trim().optional(),
   }),
   z.object({
     accountType: z.literal("viewer"),
@@ -61,6 +63,15 @@ authRouter.post("/register", async (req, res, next) => {
     const existing = await findUserByEmail(input.email);
     if (existing) throw conflict("An account with this email already exists");
 
+    // Residents pick from the admin-maintained list; store its exact name so
+    // everyone in the community shows the same spelling.
+    let buildingName: string | undefined;
+    if (input.accountType === "resident") {
+      const condominium = await findCondominiumByName(input.buildingName);
+      if (!condominium) throw badRequest("Choose a condominium from the list");
+      buildingName = condominium.name;
+    }
+
     const passwordHash = await hashPassword(input.password);
     const user = await createUser({
       name: input.name,
@@ -68,7 +79,7 @@ authRouter.post("/register", async (req, res, next) => {
       passwordHash,
       ...(input.accountType === "viewer"
         ? { phone: input.phone, deliveryAddress: input.deliveryAddress }
-        : { buildingName: input.buildingName, unitNumber: input.unitNumber }),
+        : { buildingName, buildingBlock: input.buildingBlock, unitNumber: input.unitNumber }),
     });
 
     setAuthCookie(res, user.id);
@@ -132,6 +143,20 @@ const updateMeSchema = z
 authRouter.patch("/me", requireAuth, async (req, res, next) => {
   try {
     const input = updateMeSchema.parse(req.body);
+    // Communities are matched by condominium name, so it has to come from the
+    // admin list (stored with the list's spelling). Keeping the current one is
+    // always allowed, even if admins have since removed it from the list.
+    if (input.buildingName !== undefined) {
+      const current = await findUserById(req.userId!);
+      if (!current) throw notFound("User not found");
+      if (!sameBuilding(current.building_name, input.buildingName)) {
+        const condominium = await findCondominiumByName(input.buildingName);
+        if (!condominium) throw badRequest("Choose a condominium from the list");
+        input.buildingName = condominium.name;
+      } else {
+        input.buildingName = current.building_name!;
+      }
+    }
     const user = await updateUser(req.userId!, input);
     if (!user) throw notFound("User not found");
     res.json(toPublicUser(user));

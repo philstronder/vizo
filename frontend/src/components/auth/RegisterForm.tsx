@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AuthShell } from "./AuthShell";
 import { FieldGroup, Input } from "@/components/ui/Field";
+import { CondominiumSelect } from "@/components/account/CondominiumSelect";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { useAuth } from "@/lib/auth-context";
@@ -33,7 +34,8 @@ function ResidentRegisterForm({ next }: { next?: string }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [unitNumber, setUnitNumber] = useState("");
-  const [buildingName, setBuildingName] = useState("Greenview Towers");
+  const [buildingName, setBuildingName] = useState("");
+  const [buildingBlock, setBuildingBlock] = useState("");
   const [proofFile, setProofFile] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -47,7 +49,7 @@ function ResidentRegisterForm({ next }: { next?: string }) {
     setSubmitting(true);
     setError(null);
     try {
-      await register({ accountType: "resident", name, email, password, unitNumber, buildingName });
+      await register({ accountType: "resident", name, email, password, unitNumber, buildingName, buildingBlock });
       router.push(destination);
     } catch (err) {
       setError(err instanceof Error ? err.message : t.auth.register.error);
@@ -93,9 +95,12 @@ function ResidentRegisterForm({ next }: { next?: string }) {
             placeholder={t.auth.register.passwordPlaceholder}
           />
         </FieldGroup>
+        <FieldGroup label={t.auth.register.building}>
+          <CondominiumSelect required value={buildingName} onChange={setBuildingName} />
+        </FieldGroup>
         <div className="grid grid-cols-2 gap-4">
-          <FieldGroup label={t.auth.register.building}>
-            <Input required value={buildingName} onChange={(e) => setBuildingName(e.target.value)} />
+          <FieldGroup label={t.auth.register.buildingBlock}>
+            <Input value={buildingBlock} onChange={(e) => setBuildingBlock(e.target.value)} placeholder="A" />
           </FieldGroup>
           <FieldGroup label={t.auth.register.unitNumber}>
             <Input required value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} placeholder="12B" />

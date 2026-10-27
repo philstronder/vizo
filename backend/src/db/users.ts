@@ -6,6 +6,7 @@ export interface UserRow {
   email: string;
   password_hash: string;
   building_name: string | null; // null for TV store viewer accounts
+  building_block: string | null;
   unit_number: string | null;
   phone: string | null;
   address_postal_code: string | null;
@@ -60,6 +61,7 @@ export interface PublicUser {
   name: string;
   email: string;
   buildingName?: string;
+  buildingBlock?: string;
   unitNumber?: string;
   phone?: string;
   deliveryAddress?: DeliveryAddress;
@@ -74,6 +76,7 @@ export function toPublicUser(row: UserRow): PublicUser {
     name: row.name,
     email: row.email,
     buildingName: row.building_name ?? undefined,
+    buildingBlock: row.building_block ?? undefined,
     unitNumber: row.unit_number ?? undefined,
     phone: row.phone ?? undefined,
     deliveryAddress: toDeliveryAddress(row),
@@ -100,6 +103,7 @@ export interface CreateUserInput {
   // Building residents give a building and unit; TV store viewers give a
   // phone and delivery address instead.
   buildingName?: string;
+  buildingBlock?: string;
   unitNumber?: string;
   phone?: string;
   deliveryAddress?: DeliveryAddress;
@@ -113,8 +117,8 @@ export interface CreateUserInput {
 export async function createUser(input: CreateUserInput): Promise<UserRow> {
   const { rows } = await pool.query<UserRow>(
     `INSERT INTO users (name, email, password_hash, building_name, unit_number, verified, phone,
-       address_postal_code, address_street, address_number, address_complement, address_district, address_city, address_state)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       address_postal_code, address_street, address_number, address_complement, address_district, address_city, address_state, building_block)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
      RETURNING *`,
     [
       input.name,
@@ -125,6 +129,7 @@ export async function createUser(input: CreateUserInput): Promise<UserRow> {
       input.verified ?? true,
       input.phone ?? null,
       ...addressParams(input.deliveryAddress),
+      input.buildingBlock || null,
     ]
   );
   return rows[0];

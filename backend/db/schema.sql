@@ -189,3 +189,24 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS address_complement TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS address_district TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS address_city TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS address_state TEXT;
+
+-- A condominium can have several towers or blocks; residents name theirs at
+-- sign-up. Left empty for single-building condominiums and older accounts.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS building_block TEXT;
+
+-- Residents pick their condominium from a list admins maintain, so everyone in
+-- a community signs up under the same name. Names are unique regardless of
+-- case and surrounding spaces, matching how users.building_name is compared.
+CREATE TABLE IF NOT EXISTS condominiums (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name              TEXT NOT NULL,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS condominiums_name_key ON condominiums (lower(trim(name)));
+-- Starts the list with the communities residents already belong to. Only runs
+-- while the list is empty, so condominiums an admin removed stay removed.
+INSERT INTO condominiums (name)
+SELECT DISTINCT ON (lower(trim(building_name))) trim(building_name)
+FROM users
+WHERE building_name IS NOT NULL AND NOT EXISTS (SELECT 1 FROM condominiums)
+ON CONFLICT DO NOTHING;

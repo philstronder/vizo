@@ -54,6 +54,7 @@ export interface AuthUser {
   email: string;
   // Unset for TV store viewer accounts, which have a phone and address instead.
   buildingName?: string;
+  buildingBlock?: string;
   unitNumber?: string;
   phone?: string;
   deliveryAddress?: DeliveryAddress;
@@ -79,7 +80,7 @@ export type RegisterPayload = {
   email: string;
   password: string;
 } & (
-  | { accountType: "resident"; unitNumber: string; buildingName: string }
+  | { accountType: "resident"; unitNumber: string; buildingName: string; buildingBlock?: string }
   | { accountType: "viewer"; phone: string; deliveryAddress: DeliveryAddress }
 );
 
@@ -268,6 +269,28 @@ export async function addAdmin(email: string): Promise<AuthUser> {
 
 export async function removeAdmin(userId: string): Promise<void> {
   await request(`/api/admins/${userId}`, { method: "DELETE" });
+}
+
+// ---- condominiums ---------------------------------------------------------
+
+export interface Condominium {
+  id: string;
+  name: string;
+}
+
+export async function fetchCondominiums(): Promise<Condominium[]> {
+  return request("/api/condominiums");
+}
+
+export async function addCondominium(name: string): Promise<Condominium> {
+  return request("/api/condominiums", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function removeCondominium(id: string): Promise<void> {
+  await request(`/api/condominiums/${id}`, { method: "DELETE" });
 }
 
 // ---- orders ---------------------------------------------------------------

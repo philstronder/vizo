@@ -10,6 +10,7 @@ import {
   isAddressComplete,
   trimAddress,
 } from "@/components/account/DeliveryAddressFields";
+import { CondominiumSelect } from "@/components/account/CondominiumSelect";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/i18n/I18nProvider";
 
@@ -97,7 +98,7 @@ export function EditProfileModal({ open, onClose }: { open: boolean; onClose: ()
             <p className="mb-3 text-xs text-ink-400">{t.profile.joinBuildingHint}</p>
             <div className="grid grid-cols-2 gap-4">
               <FieldGroup label={t.profile.building}>
-                <Input value={buildingName} onChange={(e) => setBuildingName(e.target.value)} />
+                <CondominiumSelect value={buildingName} onChange={setBuildingName} />
               </FieldGroup>
               <FieldGroup label={t.profile.unitNumber}>
                 <Input value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} />
@@ -107,7 +108,7 @@ export function EditProfileModal({ open, onClose }: { open: boolean; onClose: ()
         ) : (
           <>
             <FieldGroup label={t.profile.building}>
-              <Input required value={buildingName} onChange={(e) => setBuildingName(e.target.value)} />
+              <CondominiumSelect required value={buildingName} onChange={setBuildingName} />
             </FieldGroup>
             <FieldGroup label={t.profile.unitNumber}>
               <Input required value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} />

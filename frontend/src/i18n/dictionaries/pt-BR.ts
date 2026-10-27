@@ -3,7 +3,7 @@ import type { Dictionary } from "./en-US";
 export const ptBR: Dictionary = {
   meta: {
     title: "VIZO — Marketplace do Condomínio",
-    description: "Compre e venda com seus vizinhos. Preço fixo ou leilão, apenas para moradores verificados.",
+    description: "Compre e venda com seus vizinhos. Preço fixo ou lances, apenas para moradores verificados.",
   },
 
   common: {
@@ -57,7 +57,7 @@ export const ptBR: Dictionary = {
       ended: "Encerrado",
       draft: "Rascunho",
     },
-    auction: "Leilão",
+    auction: "Lances",
     directSale: "Venda Direta",
     fixedPrice: "Preço fixo",
     currentBid: "Lance atual",
@@ -83,6 +83,7 @@ export const ptBR: Dictionary = {
     join: "Cadastrar",
     tvStoreAccount: "Conta das lojas de TV",
     stores: "Lojas",
+    condominiums: "Condomínios",
     admins: "Admins",
   },
 
@@ -111,6 +112,8 @@ export const ptBR: Dictionary = {
       namePlaceholder: "Nome completo",
       passwordPlaceholder: "Pelo menos 6 caracteres",
       building: "Condomínio",
+      buildingPlaceholder: "Selecione seu condomínio",
+      buildingBlock: "Prédio/Bloco",
       unitNumber: "Número da Unidade",
       addressVerification: "Verificação de Endereço",
       addressVerificationHint: (building) =>
@@ -159,7 +162,7 @@ export const ptBR: Dictionary = {
     notFoundHint: "Ele pode ter sido removido pelo vendedor.",
     itemDetails: "Detalhes do Item",
     timeLeft: "Tempo Restante",
-    auctionEnded: "Leilão Encerrado",
+    auctionEnded: "Lances Encerrados",
     yourListing: "Este é o seu anúncio",
     placeBid: "Dar Lance",
     youStatus: (status) => `Você: ${status}`,
@@ -199,7 +202,7 @@ export const ptBR: Dictionary = {
     steps: ["Detalhes do Item", "Detalhes da Venda"],
     title: "Anuncie seu Item",
     subtitle: (building) =>
-      `Venda para seus vizinhos${building ? ` no ${building}` : ""}. Escolha um preço fixo ou inicie um leilão.`,
+      `Venda para seus vizinhos${building ? ` no ${building}` : ""}. Escolha um preço fixo ou receba lances.`,
     itemName: "Nome do Item",
     itemNamePlaceholder: "ex.: Escrivaninha de Carvalho Antiga",
     description: "Descrição",
@@ -208,7 +211,7 @@ export const ptBR: Dictionary = {
     condition: "Condição",
     selectType: "Tipo de Anúncio",
     directHint: "Defina um preço fixo; o comprador compra na hora.",
-    auctionLabel: "Leilão (Lances)",
+    auctionLabel: "Lances",
     auctionHint: "Vizinhos dão lances durante um período definido.",
     directDetails: "Detalhes da Venda Direta",
     setPrice: (currency) => `Preço (${currency})`,
@@ -218,13 +221,13 @@ export const ptBR: Dictionary = {
     contactPlaceholder: "Telefone ou forma de contato preferida",
     publishing: "Publicando...",
     publishListing: "Publicar Anúncio",
-    auctionDetails: "Detalhes do Leilão",
+    auctionDetails: "Detalhes dos Lances",
     startingPrice: (currency) => `Preço Inicial (${currency})`,
-    duration: "Duração do Leilão",
+    duration: "Duração dos Lances",
     oneDay: "1 dia",
     threeDays: "3 dias",
     oneWeek: "1 semana",
-    publishAuction: "Publicar Leilão",
+    publishAuction: "Publicar com Lances",
     error: "Não foi possível publicar o anúncio",
     storeTitle: "Adicionar Produto à Loja",
     storeSubtitle: "Este produto será listado na loja do programa de TV, visível para quem escanear o QR code.",
@@ -243,7 +246,7 @@ export const ptBR: Dictionary = {
   checkout: {
     notFound: "Item não encontrado",
     title: "Transação e Pagamento",
-    wonAuction: "Você venceu este leilão — conclua sua compra.",
+    wonAuction: "Seu lance venceu — conclua sua compra.",
     review: "Revise e confirme sua compra.",
     summary: "Resumo da Compra",
     price: "Preço",
@@ -391,6 +394,19 @@ export const ptBR: Dictionary = {
     removeError: "Não foi possível remover o admin",
     confirmRemove: (name) => `Remover o acesso de administrador de ${name}?`,
     you: "Você",
+  },
+
+  condominiums: {
+    title: "Condomínios",
+    subtitle: "Os moradores escolhem o condomínio nesta lista ao criar a conta.",
+    name: "Nome do condomínio",
+    add: "Adicionar condomínio",
+    adding: "Adicionando...",
+    addError: "Não foi possível adicionar o condomínio",
+    remove: "Remover",
+    removeError: "Não foi possível remover o condomínio",
+    confirmRemove: (name) => `Remover ${name} da lista? Os moradores atuais continuam na comunidade.`,
+    empty: "Nenhum condomínio cadastrado. Adicione um para que os moradores possam criar conta.",
   },
 
   rate: {
