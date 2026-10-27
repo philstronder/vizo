@@ -1,13 +1,17 @@
 import { cn } from "@/lib/cn";
 import { isRenderableImageSrc } from "@/lib/image";
 import type { ListingCategory } from "@/types";
-import { Armchair, BookOpen, Cpu, Flower2, Package } from "lucide-react";
+import { Armchair, BookOpen, Car, Cpu, Flower2, Package, Refrigerator, Shirt, Wrench } from "lucide-react";
 
 const categoryIcon: Record<ListingCategory, React.ComponentType<{ className?: string }>> = {
   furniture: Armchair,
   electronics: Cpu,
+  appliances: Refrigerator,
+  vehicles: Car,
+  clothing: Shirt,
   books: BookOpen,
   plants: Flower2,
+  services: Wrench,
   other: Package,
 };
 

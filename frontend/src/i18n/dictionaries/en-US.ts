@@ -40,8 +40,12 @@ export const enUS = {
     category: {
       furniture: "Furniture",
       electronics: "Electronics",
+      appliances: "Appliances",
+      vehicles: "Vehicles",
+      clothing: "Clothing",
       books: "Books",
       plants: "Plants",
+      services: "Services",
       other: "Other",
     } satisfies Record<ListingCategory, string>,
     condition: {
