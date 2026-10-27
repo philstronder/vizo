@@ -85,6 +85,7 @@ export const enUS = {
     join: "Join",
     tvStoreAccount: "TV show stores account",
     stores: "Stores",
+    condominiums: "Condominiums",
     admins: "Admins",
   },
 
@@ -113,6 +114,8 @@ export const enUS = {
       namePlaceholder: "Full name",
       passwordPlaceholder: "At least 6 characters",
       building: "Building",
+      buildingPlaceholder: "Select your condominium",
+      buildingBlock: "Tower/Block",
       unitNumber: "Unit Number",
       addressVerification: "Address Verification",
       addressVerificationHint: (building: string) =>
@@ -394,6 +397,19 @@ export const enUS = {
     removeError: "Unable to remove admin",
     confirmRemove: (name: string) => `Remove admin access for ${name}?`,
     you: "You",
+  },
+
+  condominiums: {
+    title: "Condominiums",
+    subtitle: "Residents pick their condominium from this list when they sign up.",
+    name: "Condominium name",
+    add: "Add condominium",
+    adding: "Adding...",
+    addError: "Unable to add condominium",
+    remove: "Remove",
+    removeError: "Unable to remove condominium",
+    confirmRemove: (name: string) => `Remove ${name} from the list? Current residents keep their community.`,
+    empty: "No condominiums yet. Add one so residents can sign up.",
   },
 
   rate: {

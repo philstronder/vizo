@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Bell, LogOut, Menu, Plus, Search, ShieldCheck, ShoppingCart, Store, X } from "lucide-react";
+import { Bell, Building2, LogOut, Menu, Plus, Search, ShieldCheck, ShoppingCart, Store, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAuth } from "@/lib/auth-context";
 import { fetchNotifications } from "@/lib/api";
@@ -102,6 +102,9 @@ export function Header() {
                   <Button href="/stores" variant="ghost" size="sm" className="hidden sm:inline-flex">
                     <Store size={16} /> {t.header.stores}
                   </Button>
+                  <Button href="/condominiums" variant="ghost" size="sm" className="hidden sm:inline-flex">
+                    <Building2 size={16} /> {t.header.condominiums}
+                  </Button>
                   <Button href="/admins" variant="ghost" size="sm" className="hidden sm:inline-flex">
                     <ShieldCheck size={16} /> {t.header.admins}
                   </Button>
@@ -176,6 +179,9 @@ export function Header() {
                 <>
                   <Button href="/stores" variant="secondary" size="sm" fullWidth>
                     <Store size={16} /> {t.header.stores}
+                  </Button>
+                  <Button href="/condominiums" variant="secondary" size="sm" fullWidth>
+                    <Building2 size={16} /> {t.header.condominiums}
                   </Button>
                   <Button href="/admins" variant="secondary" size="sm" fullWidth>
                     <ShieldCheck size={16} /> {t.header.admins}

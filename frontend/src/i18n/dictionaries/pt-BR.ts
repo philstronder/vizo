@@ -83,6 +83,7 @@ export const ptBR: Dictionary = {
     join: "Cadastrar",
     tvStoreAccount: "Conta das lojas de TV",
     stores: "Lojas",
+    condominiums: "Condomínios",
     admins: "Admins",
   },
 
@@ -111,6 +112,8 @@ export const ptBR: Dictionary = {
       namePlaceholder: "Nome completo",
       passwordPlaceholder: "Pelo menos 6 caracteres",
       building: "Condomínio",
+      buildingPlaceholder: "Selecione seu condomínio",
+      buildingBlock: "Prédio/Bloco",
       unitNumber: "Número da Unidade",
       addressVerification: "Verificação de Endereço",
       addressVerificationHint: (building) =>
@@ -391,6 +394,19 @@ export const ptBR: Dictionary = {
     removeError: "Não foi possível remover o admin",
     confirmRemove: (name) => `Remover o acesso de administrador de ${name}?`,
     you: "Você",
+  },
+
+  condominiums: {
+    title: "Condomínios",
+    subtitle: "Os moradores escolhem o condomínio nesta lista ao criar a conta.",
+    name: "Nome do condomínio",
+    add: "Adicionar condomínio",
+    adding: "Adicionando...",
+    addError: "Não foi possível adicionar o condomínio",
+    remove: "Remover",
+    removeError: "Não foi possível remover o condomínio",
+    confirmRemove: (name) => `Remover ${name} da lista? Os moradores atuais continuam na comunidade.`,
+    empty: "Nenhum condomínio cadastrado. Adicione um para que os moradores possam criar conta.",
   },
 
   rate: {

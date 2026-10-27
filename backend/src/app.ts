@@ -10,6 +10,7 @@ import { ordersRouter } from "./routes/orders.routes";
 import { notificationsRouter } from "./routes/notifications.routes";
 import { storesRouter } from "./routes/stores.routes";
 import { adminsRouter } from "./routes/admins.routes";
+import { condominiumsRouter } from "./routes/condominiums.routes";
 
 export const app = express();
 
@@ -29,6 +30,7 @@ app.use("/api/orders", ordersRouter);
 app.use("/api/notifications", notificationsRouter);
 app.use("/api/stores", storesRouter);
 app.use("/api/admins", adminsRouter);
+app.use("/api/condominiums", condominiumsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
