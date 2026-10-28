@@ -6,6 +6,12 @@ import Link from "next/link";
 import { AuthShell } from "./AuthShell";
 import { FieldGroup, Input } from "@/components/ui/Field";
 import { CondominiumSelect } from "@/components/account/CondominiumSelect";
+import {
+  DeliveryAddressFields,
+  EMPTY_ADDRESS,
+  isAddressComplete,
+  trimAddress,
+} from "@/components/account/DeliveryAddressFields";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { useAuth } from "@/lib/auth-context";
@@ -35,13 +41,21 @@ function ResidentRegisterForm({ next }: { next?: string }) {
   const [password, setPassword] = useState("");
   const [unitNumber, setUnitNumber] = useState("");
   const [buildingName, setBuildingName] = useState("");
+  // Set when the resident's condominium is missing from the list.
+  const [creatingCondominium, setCreatingCondominium] = useState(false);
+  const [newCondominiumName, setNewCondominiumName] = useState("");
+  const [newCondominiumAddress, setNewCondominiumAddress] = useState(EMPTY_ADDRESS);
   const [buildingBlock, setBuildingBlock] = useState("");
   const [proofFile, setProofFile] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const condominiumName = creatingCondominium ? newCondominiumName : buildingName;
+  const condominiumChosen = creatingCondominium
+    ? newCondominiumName.trim() && isAddressComplete(newCondominiumAddress)
+    : buildingName.trim();
   const canSubmit =
-    name.trim() && email.trim() && password.length >= 6 && unitNumber.trim() && buildingName.trim() && proofFile;
+    name.trim() && email.trim() && password.length >= 6 && unitNumber.trim() && condominiumChosen && proofFile;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,7 +63,17 @@ function ResidentRegisterForm({ next }: { next?: string }) {
     setSubmitting(true);
     setError(null);
     try {
-      await register({ accountType: "resident", name, email, password, unitNumber, buildingName, buildingBlock });
+      await register({
+        accountType: "resident",
+        name,
+        email,
+        password,
+        unitNumber,
+        buildingBlock,
+        ...(creatingCondominium
+          ? { newCondominium: { name: newCondominiumName.trim(), address: trimAddress(newCondominiumAddress) } }
+          : { buildingName }),
+      });
       router.push(destination);
     } catch (err) {
       setError(err instanceof Error ? err.message : t.auth.register.error);
@@ -95,24 +119,57 @@ function ResidentRegisterForm({ next }: { next?: string }) {
             placeholder={t.auth.register.passwordPlaceholder}
           />
         </FieldGroup>
-        <FieldGroup label={t.auth.register.building}>
-          <CondominiumSelect required value={buildingName} onChange={setBuildingName} />
-        </FieldGroup>
-        <div className="grid grid-cols-2 gap-4">
-          <FieldGroup label={t.auth.register.buildingBlock}>
-            <Input value={buildingBlock} onChange={(e) => setBuildingBlock(e.target.value)} placeholder="A" />
+        {creatingCondominium ? (
+          <>
+            <FieldGroup label={t.auth.register.newCondominiumName}>
+              <Input required value={newCondominiumName} onChange={(e) => setNewCondominiumName(e.target.value)} />
+            </FieldGroup>
+            <DeliveryAddressFields
+              value={newCondominiumAddress}
+              onChange={setNewCondominiumAddress}
+              withComplement={false}
+            />
+            <button
+              type="button"
+              onClick={() => setCreatingCondominium(false)}
+              className="mb-4 text-sm font-semibold text-amber-600 hover:underline"
+            >
+              {t.auth.register.chooseFromList}
+            </button>
+          </>
+        ) : (
+          <FieldGroup label={t.auth.register.building}>
+            <CondominiumSelect required value={buildingName} onChange={setBuildingName} />
+            <p className="mt-1.5 text-xs text-ink-400">
+              {t.auth.register.condominiumMissing}{" "}
+              <button
+                type="button"
+                onClick={() => setCreatingCondominium(true)}
+                className="font-semibold text-amber-600 hover:underline"
+              >
+                {t.auth.register.addCondominium}
+              </button>
+            </p>
           </FieldGroup>
-          <FieldGroup label={t.auth.register.unitNumber}>
-            <Input required value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} placeholder="12B" />
-          </FieldGroup>
-        </div>
+        )}
+        {/* The unit only makes sense once there's a condominium to put it in. */}
+        {(creatingCondominium || buildingName) && (
+          <div className="grid grid-cols-2 gap-4">
+            <FieldGroup label={t.auth.register.buildingBlock}>
+              <Input value={buildingBlock} onChange={(e) => setBuildingBlock(e.target.value)} placeholder="A" />
+            </FieldGroup>
+            <FieldGroup label={t.auth.register.unitNumber}>
+              <Input required value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} placeholder="12B" />
+            </FieldGroup>
+          </div>
+        )}
 
         <Card className="mt-2 mb-5">
           <CardBody className="text-center">
             <ShieldCheck className="mx-auto mb-2 text-amber-600" size={22} />
             <p className="mb-1 text-sm font-bold text-ink">{t.auth.register.addressVerification}</p>
             <p className="mb-3 text-xs text-ink-400">
-              {t.auth.register.addressVerificationHint(buildingName || t.common.yourBuilding)}
+              {t.auth.register.addressVerificationHint(condominiumName.trim() || t.common.yourBuilding)}
             </p>
             <input
               ref={fileRef}

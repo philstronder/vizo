@@ -113,6 +113,10 @@ export const ptBR: Dictionary = {
       passwordPlaceholder: "Pelo menos 6 caracteres",
       building: "Condomínio",
       buildingPlaceholder: "Selecione seu condomínio",
+      condominiumMissing: "Seu condomínio não está na lista?",
+      addCondominium: "Cadastrar condomínio",
+      newCondominiumName: "Nome do novo condomínio",
+      chooseFromList: "Escolher da lista",
       buildingBlock: "Prédio/Bloco",
       unitNumber: "Número da Unidade",
       addressVerification: "Verificação de Endereço",
@@ -373,6 +377,9 @@ export const ptBR: Dictionary = {
     district: "Bairro",
     city: "Cidade",
     state: "Estado",
+    cepLookingUp: "Buscando CEP...",
+    cepNotFound: "CEP não encontrado",
+    cepLookupFailed: "Não foi possível buscar o CEP; preencha o endereço manualmente",
   },
 
   viewer: {
@@ -394,6 +401,12 @@ export const ptBR: Dictionary = {
     removeError: "Não foi possível remover o admin",
     confirmRemove: (name) => `Remover o acesso de administrador de ${name}?`,
     you: "Você",
+  },
+
+  condominiumSearch: {
+    noResults: "Nenhum condomínio encontrado",
+    moreResults: (count) => `Mais ${count}. Continue digitando para filtrar.`,
+    clear: "Limpar condomínio",
   },
 
   condominiums: {

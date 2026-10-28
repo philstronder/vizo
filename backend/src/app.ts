@@ -11,6 +11,7 @@ import { notificationsRouter } from "./routes/notifications.routes";
 import { storesRouter } from "./routes/stores.routes";
 import { adminsRouter } from "./routes/admins.routes";
 import { condominiumsRouter } from "./routes/condominiums.routes";
+import { cepRouter } from "./routes/cep.routes";
 
 export const app = express();
 
@@ -31,6 +32,7 @@ app.use("/api/notifications", notificationsRouter);
 app.use("/api/stores", storesRouter);
 app.use("/api/admins", adminsRouter);
 app.use("/api/condominiums", condominiumsRouter);
+app.use("/api/cep", cepRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -3,7 +3,8 @@ import { z } from "zod";
 import { createUser, findUserByEmail, findUserById, sameBuilding, toPublicUser, updateUser } from "../db/users";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { AUTH_COOKIE_MAX_AGE_MS, AUTH_COOKIE_NAME, signAuthToken } from "../lib/jwt";
-import { findCondominiumByName } from "../db/condominiums";
+import { createCondominium, findCondominiumByName } from "../db/condominiums";
+import { condominiumSchema, deliveryAddressSchema } from "../lib/schemas";
 import { badRequest, conflict, notFound, unauthorized } from "../lib/http-error";
 import { requireAuth } from "../middleware/auth";
 import { env } from "../lib/env";
@@ -22,16 +23,6 @@ function setAuthCookie(res: Response, userId: string) {
   res.cookie(AUTH_COOKIE_NAME, signAuthToken({ userId }), cookieOptions);
 }
 
-const deliveryAddressSchema = z.object({
-  postalCode: z.string().trim().min(1, "Postal code is required"),
-  street: z.string().trim().min(1, "Street is required"),
-  number: z.string().trim().min(1, "Number is required"),
-  complement: z.string().trim().optional(),
-  district: z.string().trim().min(1, "District is required"),
-  city: z.string().trim().min(1, "City is required"),
-  state: z.string().trim().min(1, "State is required"),
-});
-
 const phoneSchema = z.string().trim().min(8, "Phone is required");
 
 // Building residents join their building's community; TV store viewers
@@ -44,7 +35,9 @@ const registerSchema = z.discriminatedUnion("accountType", [
     email: z.email(),
     password: z.string().min(6, "Password must be at least 6 characters"),
     unitNumber: z.string().trim().min(1, "Unit number is required"),
-    buildingName: z.string().trim().min(1, "Building name is required"),
+    // Either a condominium from the list, or one to add to it.
+    buildingName: z.string().trim().min(1, "Building name is required").optional(),
+    newCondominium: condominiumSchema.optional(),
     buildingBlock: z.string().trim().optional(),
   }),
   z.object({
@@ -63,13 +56,21 @@ authRouter.post("/register", async (req, res, next) => {
     const existing = await findUserByEmail(input.email);
     if (existing) throw conflict("An account with this email already exists");
 
-    // Residents pick from the admin-maintained list; store its exact name so
-    // everyone in the community shows the same spelling.
+    // Residents pick from the admin-maintained list, or add their condominium
+    // when it's missing. Store the list's exact name so everyone in the
+    // community shows the same spelling.
     let buildingName: string | undefined;
     if (input.accountType === "resident") {
-      const condominium = await findCondominiumByName(input.buildingName);
-      if (!condominium) throw badRequest("Choose a condominium from the list");
-      buildingName = condominium.name;
+      if (input.newCondominium) {
+        const { name, address } = input.newCondominium;
+        const created = await createCondominium(name, address);
+        if (!created) throw conflict("This condominium is already on the list; choose it there");
+        buildingName = created.name;
+      } else {
+        const condominium = input.buildingName ? await findCondominiumByName(input.buildingName) : null;
+        if (!condominium) throw badRequest("Choose a condominium from the list");
+        buildingName = condominium.name;
+      }
     }
 
     const passwordHash = await hashPassword(input.password);
@@ -132,6 +133,8 @@ const updateMeSchema = z
     name: z.string().trim().min(1, "Name is required"),
     buildingName: z.string().trim().min(1, "Building name is required").optional(),
     unitNumber: z.string().trim().min(1, "Unit number is required").optional(),
+    // Empty clears it; not every condominium has blocks.
+    buildingBlock: z.string().trim().optional(),
     phone: phoneSchema.optional(),
     deliveryAddress: deliveryAddressSchema.optional(),
   })

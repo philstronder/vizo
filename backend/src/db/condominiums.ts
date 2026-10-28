@@ -1,13 +1,22 @@
 import { pool } from "./pool";
+import { addressParams, toDeliveryAddress, type DeliveryAddress } from "./users";
 
 export interface CondominiumRow {
   id: string;
   name: string;
+  // Null for condominiums seeded from users.building_name.
+  address_postal_code: string | null;
+  address_street: string | null;
+  address_number: string | null;
+  address_complement: string | null;
+  address_district: string | null;
+  address_city: string | null;
+  address_state: string | null;
   created_at: Date;
 }
 
 export function toApiCondominium(row: CondominiumRow) {
-  return { id: row.id, name: row.name };
+  return { id: row.id, name: row.name, address: toDeliveryAddress(row) };
 }
 
 export async function listCondominiums(): Promise<CondominiumRow[]> {
@@ -25,10 +34,13 @@ export async function findCondominiumByName(name: string): Promise<CondominiumRo
 }
 
 // Returns null when a condominium with the same name already exists.
-export async function createCondominium(name: string): Promise<CondominiumRow | null> {
+export async function createCondominium(name: string, address: DeliveryAddress): Promise<CondominiumRow | null> {
   const { rows } = await pool.query<CondominiumRow>(
-    "INSERT INTO condominiums (name) VALUES ($1) ON CONFLICT DO NOTHING RETURNING *",
-    [name]
+    `INSERT INTO condominiums
+       (name, address_postal_code, address_street, address_number, address_complement, address_district, address_city, address_state)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT DO NOTHING RETURNING *`,
+    [name, ...addressParams(address)]
   );
   return rows[0] ?? null;
 }

@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { z } from "zod";
 import {
   createCondominium,
   deleteCondominium,
@@ -8,6 +7,7 @@ import {
 } from "../db/condominiums";
 import { requireAdmin } from "../middleware/auth";
 import { conflict, notFound } from "../lib/http-error";
+import { condominiumSchema } from "../lib/schemas";
 
 // The condominiums residents can pick at sign-up. Anyone can read the list
 // (the sign-up form is public); only admins change it.
@@ -22,14 +22,10 @@ condominiumsRouter.get("/", async (_req, res, next) => {
   }
 });
 
-const condominiumSchema = z.object({
-  name: z.string().trim().min(1, "Name is required"),
-});
-
 condominiumsRouter.post("/", requireAdmin, async (req, res, next) => {
   try {
-    const { name } = condominiumSchema.parse(req.body);
-    const row = await createCondominium(name);
+    const { name, address } = condominiumSchema.parse(req.body);
+    const row = await createCondominium(name, address);
     if (!row) throw conflict("This condominium is already on the list");
     res.status(201).json(toApiCondominium(row));
   } catch (err) {

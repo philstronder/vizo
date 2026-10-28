@@ -203,6 +203,15 @@ CREATE TABLE IF NOT EXISTS condominiums (
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE UNIQUE INDEX IF NOT EXISTS condominiums_name_key ON condominiums (lower(trim(name)));
+-- Admins give each new condominium its full address. Nullable because
+-- condominiums seeded from users.building_name have none.
+ALTER TABLE condominiums ADD COLUMN IF NOT EXISTS address_postal_code TEXT;
+ALTER TABLE condominiums ADD COLUMN IF NOT EXISTS address_street TEXT;
+ALTER TABLE condominiums ADD COLUMN IF NOT EXISTS address_number TEXT;
+ALTER TABLE condominiums ADD COLUMN IF NOT EXISTS address_complement TEXT;
+ALTER TABLE condominiums ADD COLUMN IF NOT EXISTS address_district TEXT;
+ALTER TABLE condominiums ADD COLUMN IF NOT EXISTS address_city TEXT;
+ALTER TABLE condominiums ADD COLUMN IF NOT EXISTS address_state TEXT;
 -- Starts the list with the communities residents already belong to. Only runs
 -- while the list is empty, so condominiums an admin removed stay removed.
 INSERT INTO condominiums (name)

@@ -20,6 +20,7 @@ export function EditProfileModal({ open, onClose }: { open: boolean; onClose: ()
   const [name, setName] = useState("");
   const [buildingName, setBuildingName] = useState("");
   const [unitNumber, setUnitNumber] = useState("");
+  const [buildingBlock, setBuildingBlock] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState(EMPTY_ADDRESS);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +39,7 @@ export function EditProfileModal({ open, onClose }: { open: boolean; onClose: ()
       setName(user.name);
       setBuildingName(user.buildingName ?? "");
       setUnitNumber(user.unitNumber ?? "");
+      setBuildingBlock(user.buildingBlock ?? "");
       setPhone(user.phone ?? "");
       setAddress(user.deliveryAddress ?? EMPTY_ADDRESS);
       setError(null);
@@ -63,9 +65,16 @@ export function EditProfileModal({ open, onClose }: { open: boolean; onClose: ()
               name: name.trim(),
               phone: phone.trim(),
               deliveryAddress: trimAddress(address),
-              ...(joiningBuilding ? { buildingName: buildingName.trim(), unitNumber: unitNumber.trim() } : {}),
+              ...(joiningBuilding
+                ? { buildingName: buildingName.trim(), unitNumber: unitNumber.trim(), buildingBlock: buildingBlock.trim() }
+                : {}),
             }
-          : { name: name.trim(), buildingName: buildingName.trim(), unitNumber: unitNumber.trim() }
+          : {
+              name: name.trim(),
+              buildingName: buildingName.trim(),
+              unitNumber: unitNumber.trim(),
+              buildingBlock: buildingBlock.trim(),
+            }
       );
       onClose();
     } catch (err) {
@@ -96,9 +105,12 @@ export function EditProfileModal({ open, onClose }: { open: boolean; onClose: ()
             <DeliveryAddressFields value={address} onChange={setAddress} />
             <h3 className="mt-5 text-sm font-bold text-ink">{t.profile.joinBuildingTitle}</h3>
             <p className="mb-3 text-xs text-ink-400">{t.profile.joinBuildingHint}</p>
+            <FieldGroup label={t.profile.building}>
+              <CondominiumSelect value={buildingName} onChange={setBuildingName} />
+            </FieldGroup>
             <div className="grid grid-cols-2 gap-4">
-              <FieldGroup label={t.profile.building}>
-                <CondominiumSelect value={buildingName} onChange={setBuildingName} />
+              <FieldGroup label={t.auth.register.buildingBlock}>
+                <Input value={buildingBlock} onChange={(e) => setBuildingBlock(e.target.value)} placeholder="A" />
               </FieldGroup>
               <FieldGroup label={t.profile.unitNumber}>
                 <Input value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} />
@@ -110,9 +122,14 @@ export function EditProfileModal({ open, onClose }: { open: boolean; onClose: ()
             <FieldGroup label={t.profile.building}>
               <CondominiumSelect required value={buildingName} onChange={setBuildingName} />
             </FieldGroup>
-            <FieldGroup label={t.profile.unitNumber}>
-              <Input required value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} />
-            </FieldGroup>
+            <div className="grid grid-cols-2 gap-4">
+              <FieldGroup label={t.auth.register.buildingBlock}>
+                <Input value={buildingBlock} onChange={(e) => setBuildingBlock(e.target.value)} placeholder="A" />
+              </FieldGroup>
+              <FieldGroup label={t.profile.unitNumber}>
+                <Input required value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} />
+              </FieldGroup>
+            </div>
           </>
         )}
 
