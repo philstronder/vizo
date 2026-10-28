@@ -80,7 +80,14 @@ export type RegisterPayload = {
   email: string;
   password: string;
 } & (
-  | { accountType: "resident"; unitNumber: string; buildingName: string; buildingBlock?: string }
+  | {
+      accountType: "resident";
+      unitNumber: string;
+      buildingBlock?: string;
+      // Either a condominium from the list, or one to add to it.
+      buildingName?: string;
+      newCondominium?: NewCondominium;
+    }
   | { accountType: "viewer"; phone: string; deliveryAddress: DeliveryAddress }
 );
 
@@ -109,6 +116,7 @@ export interface UpdateProfilePayload {
   name: string;
   buildingName?: string;
   unitNumber?: string;
+  buildingBlock?: string; // "" clears it
   phone?: string;
   deliveryAddress?: DeliveryAddress;
 }
@@ -276,21 +284,36 @@ export async function removeAdmin(userId: string): Promise<void> {
 export interface Condominium {
   id: string;
   name: string;
+  // Unset for condominiums added before addresses were required.
+  address?: DeliveryAddress;
 }
 
 export async function fetchCondominiums(): Promise<Condominium[]> {
   return request("/api/condominiums");
 }
 
-export async function addCondominium(name: string): Promise<Condominium> {
+export interface NewCondominium {
+  name: string;
+  address: DeliveryAddress;
+}
+
+export async function addCondominium(name: string, address: DeliveryAddress): Promise<Condominium> {
   return request("/api/condominiums", {
     method: "POST",
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, address }),
   });
 }
 
 export async function removeCondominium(id: string): Promise<void> {
   await request(`/api/condominiums/${id}`, { method: "DELETE" });
+}
+
+// ---- cep ------------------------------------------------------------------
+
+export type CepAddress = Pick<DeliveryAddress, "postalCode" | "street" | "district" | "city" | "state">;
+
+export async function lookupCep(cep: string): Promise<CepAddress> {
+  return request(`/api/cep/${cep}`);
 }
 
 // ---- orders ---------------------------------------------------------------

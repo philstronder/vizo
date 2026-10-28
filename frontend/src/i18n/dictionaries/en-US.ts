@@ -115,6 +115,9 @@ export const enUS = {
       passwordPlaceholder: "At least 6 characters",
       building: "Building",
       buildingPlaceholder: "Select your condominium",
+      addCondominium: "+ Add a condominium not on the list",
+      newCondominiumName: "New condominium name",
+      chooseFromList: "Choose from the list instead",
       buildingBlock: "Tower/Block",
       unitNumber: "Unit Number",
       addressVerification: "Address Verification",
@@ -376,6 +379,9 @@ export const enUS = {
     district: "District",
     city: "City",
     state: "State",
+    cepLookingUp: "Looking up ZIP code...",
+    cepNotFound: "ZIP code not found",
+    cepLookupFailed: "Could not look up the ZIP code; fill in the address manually",
   },
 
   viewer: {

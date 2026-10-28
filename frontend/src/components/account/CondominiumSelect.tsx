@@ -8,13 +8,19 @@ import { useI18n } from "@/i18n/I18nProvider";
 // The condominiums admins maintain. A resident whose condominium was since
 // removed from the list still sees it selected, so saving their profile
 // doesn't move them out of their community.
+// With onCreateNew, a last option lets the user add a condominium that's
+// missing from the list.
+const CREATE_NEW = "__create_new__";
+
 export function CondominiumSelect({
   value,
   onChange,
+  onCreateNew,
   required,
 }: {
   value: string;
   onChange: (name: string) => void;
+  onCreateNew?: () => void;
   required?: boolean;
 }) {
   const { t } = useI18n();
@@ -36,7 +42,11 @@ export function CondominiumSelect({
   if (value && !names.some((n) => n.trim().toLowerCase() === value.trim().toLowerCase())) names.unshift(value);
 
   return (
-    <Select required={required} value={value} onChange={(e) => onChange(e.target.value)}>
+    <Select
+      required={required}
+      value={value}
+      onChange={(e) => (e.target.value === CREATE_NEW ? onCreateNew?.() : onChange(e.target.value))}
+    >
       <option value="" disabled={required}>
         {t.auth.register.buildingPlaceholder}
       </option>
@@ -45,6 +55,7 @@ export function CondominiumSelect({
           {name}
         </option>
       ))}
+      {onCreateNew && <option value={CREATE_NEW}>{t.auth.register.addCondominium}</option>}
     </Select>
   );
 }

@@ -113,6 +113,9 @@ export const ptBR: Dictionary = {
       passwordPlaceholder: "Pelo menos 6 caracteres",
       building: "Condomínio",
       buildingPlaceholder: "Selecione seu condomínio",
+      addCondominium: "+ Cadastrar condomínio que não está na lista",
+      newCondominiumName: "Nome do novo condomínio",
+      chooseFromList: "Escolher da lista",
       buildingBlock: "Prédio/Bloco",
       unitNumber: "Número da Unidade",
       addressVerification: "Verificação de Endereço",
@@ -373,6 +376,9 @@ export const ptBR: Dictionary = {
     district: "Bairro",
     city: "Cidade",
     state: "Estado",
+    cepLookingUp: "Buscando CEP...",
+    cepNotFound: "CEP não encontrado",
+    cepLookupFailed: "Não foi possível buscar o CEP; preencha o endereço manualmente",
   },
 
   viewer: {

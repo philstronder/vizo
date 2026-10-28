@@ -135,7 +135,7 @@ export async function createUser(input: CreateUserInput): Promise<UserRow> {
   return rows[0];
 }
 
-function addressParams(address: DeliveryAddress | undefined) {
+export function addressParams(address: DeliveryAddress | undefined) {
   return [
     address?.postalCode ?? null,
     address?.street ?? null,
@@ -152,6 +152,7 @@ export interface UpdateUserInput {
   name: string;
   buildingName?: string;
   unitNumber?: string;
+  buildingBlock?: string; // "" clears it
   phone?: string;
   deliveryAddress?: DeliveryAddress;
 }
@@ -170,7 +171,8 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<Us
        address_complement = CASE WHEN $6::boolean THEN $10 ELSE address_complement END,
        address_district = CASE WHEN $6::boolean THEN $11 ELSE address_district END,
        address_city = CASE WHEN $6::boolean THEN $12 ELSE address_city END,
-       address_state = CASE WHEN $6::boolean THEN $13 ELSE address_state END
+       address_state = CASE WHEN $6::boolean THEN $13 ELSE address_state END,
+       building_block = CASE WHEN $14::boolean THEN $15 ELSE building_block END
      WHERE id = $5 RETURNING *`,
     [
       input.name,
@@ -180,6 +182,8 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<Us
       id,
       address !== undefined,
       ...addressParams(address),
+      input.buildingBlock !== undefined,
+      input.buildingBlock || null,
     ]
   );
   return rows[0] ?? null;

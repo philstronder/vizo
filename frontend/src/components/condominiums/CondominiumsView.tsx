@@ -5,7 +5,14 @@ import { Building2, Plus, Trash2 } from "lucide-react";
 import { addCondominium, fetchCondominiums, removeCondominium, type Condominium } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Field";
+import { FieldGroup, Input } from "@/components/ui/Field";
+import {
+  DeliveryAddressFields,
+  EMPTY_ADDRESS,
+  formatAddress,
+  isAddressComplete,
+  trimAddress,
+} from "@/components/account/DeliveryAddressFields";
 import { useI18n } from "@/i18n/I18nProvider";
 
 // Admins maintain the condominiums residents can pick at sign-up.
@@ -14,6 +21,7 @@ export function CondominiumsView() {
   const [condominiums, setCondominiums] = useState<Condominium[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
+  const [address, setAddress] = useState(EMPTY_ADDRESS);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,9 +44,10 @@ export function CondominiumsView() {
     setAdding(true);
     setError(null);
     try {
-      const added = await addCondominium(name.trim());
+      const added = await addCondominium(name.trim(), trimAddress(address));
       setCondominiums((prev) => [...prev, added].sort((a, b) => a.name.localeCompare(b.name)));
       setName("");
+      setAddress(EMPTY_ADDRESS);
     } catch (err) {
       setError(err instanceof Error ? err.message : t.condominiums.addError);
     } finally {
@@ -62,19 +71,18 @@ export function CondominiumsView() {
       <h1 className="text-2xl font-black text-ink">{t.condominiums.title}</h1>
       <p className="mt-1 mb-6 text-sm text-ink-400">{t.condominiums.subtitle}</p>
 
-      <form onSubmit={handleAdd} className="mb-2 flex gap-2">
-        <Input
-          required
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t.condominiums.name}
-          aria-label={t.condominiums.name}
-        />
-        <Button type="submit" disabled={adding || !name.trim()} className="shrink-0">
-          <Plus size={16} /> {adding ? t.condominiums.adding : t.condominiums.add}
-        </Button>
-      </form>
-      {error && <p className="mb-2 text-sm font-medium text-danger">{error}</p>}
+      <Card className="mb-2 p-4">
+        <form onSubmit={handleAdd}>
+          <FieldGroup label={t.condominiums.name}>
+            <Input required value={name} onChange={(e) => setName(e.target.value)} />
+          </FieldGroup>
+          <DeliveryAddressFields value={address} onChange={setAddress} withComplement={false} />
+          {error && <p className="mb-3 text-sm font-medium text-danger">{error}</p>}
+          <Button type="submit" disabled={adding || !name.trim() || !isAddressComplete(address)}>
+            <Plus size={16} /> {adding ? t.condominiums.adding : t.condominiums.add}
+          </Button>
+        </form>
+      </Card>
 
       {!loading &&
         (condominiums.length === 0 ? (
@@ -84,7 +92,12 @@ export function CondominiumsView() {
             {condominiums.map((condominium) => (
               <div key={condominium.id} className="flex items-center gap-3 px-4 py-3">
                 <Building2 size={18} className="shrink-0 text-ink-400" />
-                <p className="min-w-0 flex-1 truncate font-semibold text-ink">{condominium.name}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold text-ink">{condominium.name}</p>
+                  {condominium.address && (
+                    <p className="truncate text-sm text-ink-400">{formatAddress(condominium.address)}</p>
+                  )}
+                </div>
                 <Button variant="ghost" size="sm" onClick={() => handleRemove(condominium)}>
                   <Trash2 size={14} /> {t.condominiums.remove}
                 </Button>
