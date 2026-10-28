@@ -152,14 +152,17 @@ function ResidentRegisterForm({ next }: { next?: string }) {
             </p>
           </FieldGroup>
         )}
-        <div className="grid grid-cols-2 gap-4">
-          <FieldGroup label={t.auth.register.buildingBlock}>
-            <Input value={buildingBlock} onChange={(e) => setBuildingBlock(e.target.value)} placeholder="A" />
-          </FieldGroup>
-          <FieldGroup label={t.auth.register.unitNumber}>
-            <Input required value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} placeholder="12B" />
-          </FieldGroup>
-        </div>
+        {/* The unit only makes sense once there's a condominium to put it in. */}
+        {(creatingCondominium || buildingName) && (
+          <div className="grid grid-cols-2 gap-4">
+            <FieldGroup label={t.auth.register.buildingBlock}>
+              <Input value={buildingBlock} onChange={(e) => setBuildingBlock(e.target.value)} placeholder="A" />
+            </FieldGroup>
+            <FieldGroup label={t.auth.register.unitNumber}>
+              <Input required value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} placeholder="12B" />
+            </FieldGroup>
+          </div>
+        )}
 
         <Card className="mt-2 mb-5">
           <CardBody className="text-center">
