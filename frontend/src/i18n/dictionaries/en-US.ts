@@ -115,7 +115,8 @@ export const enUS = {
       passwordPlaceholder: "At least 6 characters",
       building: "Building",
       buildingPlaceholder: "Select your condominium",
-      addCondominium: "+ Add a condominium not on the list",
+      condominiumMissing: "Condominium not on the list?",
+      addCondominium: "Add your condominium",
       newCondominiumName: "New condominium name",
       chooseFromList: "Choose from the list instead",
       buildingBlock: "Tower/Block",
@@ -403,6 +404,12 @@ export const enUS = {
     removeError: "Unable to remove admin",
     confirmRemove: (name: string) => `Remove admin access for ${name}?`,
     you: "You",
+  },
+
+  condominiumSearch: {
+    noResults: "No condominium found",
+    moreResults: (count: number) => `${count} more. Keep typing to narrow the list.`,
+    clear: "Clear condominium",
   },
 
   condominiums: {

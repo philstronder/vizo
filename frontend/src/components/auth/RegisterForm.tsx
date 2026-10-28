@@ -139,12 +139,17 @@ function ResidentRegisterForm({ next }: { next?: string }) {
           </>
         ) : (
           <FieldGroup label={t.auth.register.building}>
-            <CondominiumSelect
-              required
-              value={buildingName}
-              onChange={setBuildingName}
-              onCreateNew={() => setCreatingCondominium(true)}
-            />
+            <CondominiumSelect required value={buildingName} onChange={setBuildingName} />
+            <p className="mt-1.5 text-xs text-ink-400">
+              {t.auth.register.condominiumMissing}{" "}
+              <button
+                type="button"
+                onClick={() => setCreatingCondominium(true)}
+                className="font-semibold text-amber-600 hover:underline"
+              >
+                {t.auth.register.addCondominium}
+              </button>
+            </p>
           </FieldGroup>
         )}
         <div className="grid grid-cols-2 gap-4">

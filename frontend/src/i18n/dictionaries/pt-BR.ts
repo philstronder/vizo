@@ -113,7 +113,8 @@ export const ptBR: Dictionary = {
       passwordPlaceholder: "Pelo menos 6 caracteres",
       building: "Condomínio",
       buildingPlaceholder: "Selecione seu condomínio",
-      addCondominium: "+ Cadastrar condomínio que não está na lista",
+      condominiumMissing: "Seu condomínio não está na lista?",
+      addCondominium: "Cadastrar condomínio",
       newCondominiumName: "Nome do novo condomínio",
       chooseFromList: "Escolher da lista",
       buildingBlock: "Prédio/Bloco",
@@ -400,6 +401,12 @@ export const ptBR: Dictionary = {
     removeError: "Não foi possível remover o admin",
     confirmRemove: (name) => `Remover o acesso de administrador de ${name}?`,
     you: "Você",
+  },
+
+  condominiumSearch: {
+    noResults: "Nenhum condomínio encontrado",
+    moreResults: (count) => `Mais ${count}. Continue digitando para filtrar.`,
+    clear: "Limpar condomínio",
   },
 
   condominiums: {
