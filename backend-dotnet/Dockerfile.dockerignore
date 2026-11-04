@@ -1,0 +1,6 @@
+# The build context is the whole repo; send only what the image needs.
+*
+!backend/db/schema.sql
+!backend-dotnet/src/
+**/bin/
+**/obj/

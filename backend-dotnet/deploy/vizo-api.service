@@ -1,0 +1,27 @@
+# systemd unit for the self-contained build on EC2 — see README.md.
+#   sudo cp deploy/vizo-api.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now vizo-api
+
+[Unit]
+Description=VIZO API (.NET)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=vizo
+Group=vizo
+WorkingDirectory=/opt/vizo-api
+# DATABASE_URL, JWT_SECRET, CORS_ORIGIN, PGSSL, ... (same keys as backend/.env.example)
+EnvironmentFile=/etc/vizo-api.env
+ExecStart=/opt/vizo-api/Vizo.Api
+Restart=always
+RestartSec=5
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
