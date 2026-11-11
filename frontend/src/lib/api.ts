@@ -12,7 +12,9 @@ import type {
   Message,
   Notification,
   Order,
+  OrderMessage,
   Store,
+  Wallet,
 } from "@/types";
 
 // Empty by default: requests go to the same origin and Next rewrites /api/*
@@ -321,7 +323,8 @@ export async function lookupCep(cep: string): Promise<CepAddress> {
 export interface CheckoutPayload {
   listingId: string;
   pickupLocation?: string;
-  pickupTime?: string;
+  meetupAt?: string; // ISO; required for community listings
+  useCredits?: boolean; // pay as much as the buyer's credits cover
 }
 
 export async function checkout(payload: CheckoutPayload): Promise<Order> {
@@ -339,6 +342,34 @@ export async function completeOrder(id: string): Promise<Order> {
   return request(`/api/orders/${id}/complete`, { method: "PATCH" });
 }
 
+// Suggests a (new) meetup time; the other side has to accept it.
+export async function proposeMeetup(id: string, meetupAt: string): Promise<Order> {
+  return request(`/api/orders/${id}/meetup`, {
+    method: "PATCH",
+    body: JSON.stringify({ meetupAt }),
+  });
+}
+
+export async function acceptMeetup(id: string): Promise<Order> {
+  return request(`/api/orders/${id}/meetup/accept`, { method: "POST" });
+}
+
+export async function cancelOrder(id: string): Promise<Order> {
+  return request(`/api/orders/${id}/cancel`, { method: "POST" });
+}
+
+// Also marks the other side's messages as read.
+export async function fetchOrderMessages(id: string): Promise<OrderMessage[]> {
+  return request(`/api/orders/${id}/messages`);
+}
+
+export async function sendOrderMessage(id: string, body: string): Promise<OrderMessage> {
+  return request(`/api/orders/${id}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+}
+
 export async function reviewOrder(
   id: string,
   payload: { rating: number; comment?: string },
@@ -346,6 +377,19 @@ export async function reviewOrder(
   return request(`/api/orders/${id}/review`, {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+// ---- wallet ---------------------------------------------------------------
+
+export async function fetchWallet(): Promise<Wallet> {
+  return request("/api/wallet");
+}
+
+export async function withdrawCredits(amount: number, pixKey: string): Promise<Wallet> {
+  return request("/api/wallet/withdraw", {
+    method: "POST",
+    body: JSON.stringify({ amount, pixKey }),
   });
 }
 

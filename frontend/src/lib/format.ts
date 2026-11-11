@@ -32,6 +32,22 @@ export function formatDate(iso: string, locale: Locale): string {
   }).format(new Date(iso));
 }
 
+export function formatDateTime(iso: string, locale: Locale): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+// The value a <input type="datetime-local"> expects, in the browser's time zone.
+export function toDateTimeLocalValue(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export function formatRelativeTime(iso: string, locale: Locale): string {
   const t = getDictionary(locale).time;
   const diffMs = Date.now() - new Date(iso).getTime();
