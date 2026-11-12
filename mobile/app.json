@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Vizo",
+    "slug": "vizo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#faf6ec",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "ios": {
+      "bundleIdentifier": "com.vizo.app",
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Vizo uses the camera so you can take photos of items and documents you upload.",
+        "NSPhotoLibraryUsageDescription": "Vizo needs access to your photos so you can attach images to listings and documents."
+      }
+    },
+    "android": {
+      "package": "com.vizo.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#faf6ec",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "backgroundColor": "#faf6ec"
+        }
+      ]
+    ],
+    "extra": {
+      "webUrl": "https://d381vgrwdqsb3p.cloudfront.net"
+    }
+  }
+}

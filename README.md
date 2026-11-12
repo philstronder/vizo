@@ -5,6 +5,8 @@ directly with each other, fixed-price or by auction, with in-person pickup.
 
 - `frontend/` — Next.js (App Router, TypeScript, Tailwind)
 - `backend/` — Express + PostgreSQL REST API, JWT auth via httpOnly cookie
+- `mobile/` — iOS/Android app (Expo) wrapping the frontend in a WebView, with
+  over-the-air updates. See `mobile/README.md`
 - `sketches/` — original wireframes this was built from
 
 ## Running locally
