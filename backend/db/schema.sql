@@ -219,3 +219,61 @@ SELECT DISTINCT ON (lower(trim(building_name))) trim(building_name)
 FROM users
 WHERE building_name IS NOT NULL AND NOT EXISTS (SELECT 1 FROM condominiums)
 ON CONFLICT DO NOTHING;
+
+-- Community sales are paid up front and held by the platform (escrow) until
+-- both the buyer and the seller confirm the handoff; the seller is then paid
+-- in platform credits. NULL for store orders and for orders placed before
+-- escrow existed, which keep the old single-confirmation flow.
+DO $$ BEGIN
+  CREATE TYPE payment_status AS ENUM ('held', 'released', 'refunded');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status payment_status;
+-- Part of the price the buyer paid with their own credits; the rest was charged to the card.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid_with_credits NUMERIC(10, 2) NOT NULL DEFAULT 0;
+
+-- The buyer suggests when to meet at checkout. Either side can propose
+-- another time, and the meetup is agreed once the other side accepts.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS meetup_at TIMESTAMPTZ;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS meetup_proposed_by UUID REFERENCES users(id);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS meetup_confirmed BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Each side confirms the handoff; the order completes when both have.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS buyer_confirmed_at TIMESTAMPTZ;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS seller_confirmed_at TIMESTAMPTZ;
+
+-- Platform credits ledger. A user's balance is the sum of their amounts:
+-- sales released from escrow and refunds add credits; purchases paid with
+-- credits and withdrawals subtract them. Rows are never updated or deleted.
+DO $$ BEGIN
+  CREATE TYPE credit_type AS ENUM ('sale', 'purchase', 'refund', 'withdrawal');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE TABLE IF NOT EXISTS credit_transactions (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  order_id          UUID REFERENCES orders(id),
+  type              credit_type NOT NULL,
+  amount            NUMERIC(10, 2) NOT NULL CHECK (amount <> 0),
+  pix_key           TEXT, -- withdrawals: where the payout was sent
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_credit_transactions_user ON credit_transactions(user_id, created_at DESC);
+
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'meetup_proposed';
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'meetup_confirmed';
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'delivery_confirmed';
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'payment_released';
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'order_cancelled';
+
+-- Private chat between an order's buyer and seller, to arrange the handoff.
+-- read_at is set when the other participant opens the chat.
+CREATE TABLE IF NOT EXISTS order_messages (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id          UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  author_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body              TEXT NOT NULL,
+  read_at           TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_order_messages_order ON order_messages(order_id, created_at);

@@ -14,10 +14,28 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { StarRating } from "@/components/ui/StarRating";
 import { RateSellerModal } from "./RateSellerModal";
+import { OrderHandoff } from "./OrderHandoff";
+import { OrderChat } from "./OrderChat";
 import { PlaceholderImage } from "@/components/listings/PlaceholderImage";
 import { formatCurrency, formatDate, formatRelativeTime } from "@/lib/format";
 import type { Notification, NotificationType, Order, OrderStatus } from "@/types";
-import { Bell, CheckCheck, CircleCheck, Gavel, MapPin, MessageSquare, PackageCheck, Star, Tag } from "lucide-react";
+import {
+  Bell,
+  CalendarCheck,
+  CalendarClock,
+  CheckCheck,
+  CircleCheck,
+  Gavel,
+  Handshake,
+  MapPin,
+  MessageSquare,
+  PackageCheck,
+  Star,
+  Tag,
+  Wallet,
+  CircleX,
+  MessageCircle,
+} from "lucide-react";
 import { formatAddress } from "@/components/account/DeliveryAddressFields";
 import Link from "next/link";
 import { useI18n } from "@/i18n/I18nProvider";
@@ -37,6 +55,11 @@ const notificationIcon: Record<NotificationType, React.ComponentType<{ size?: nu
   outbid: Gavel,
   listing_ending: Bell,
   order_completed: CircleCheck,
+  meetup_proposed: CalendarClock,
+  meetup_confirmed: CalendarCheck,
+  delivery_confirmed: Handshake,
+  payment_released: Wallet,
+  order_cancelled: CircleX,
 };
 
 const openStatuses: OrderStatus[] = ["pending_pickup", "ready_for_pickup", "shipped"];
@@ -45,12 +68,19 @@ function OrderRow({
   order,
   role,
   onUpdated,
+  initialChatOpen = false,
 }: {
   order: Order;
   role: "buyer" | "seller";
   onUpdated: (order: Order) => void;
+  initialChatOpen?: boolean;
 }) {
   const { locale, t } = useI18n();
+  const [chatOpen, setChatOpen] = useState(initialChatOpen);
+  const unread = order.unreadMessages ?? 0;
+  const markChatRead = useCallback(() => {
+    if (unread > 0) onUpdated({ ...order, unreadMessages: 0 });
+  }, [order, unread, onUpdated]);
   const [completing, setCompleting] = useState(false);
   const [rateOpen, setRateOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +114,21 @@ function OrderRow({
           <p className="text-sm font-bold text-ink">{formatCurrency(order.price, locale)}</p>
           <Badge tone={statusTone[order.status]}>{t.orders.status[order.status]}</Badge>
         </div>
+        <button
+          onClick={() => setChatOpen(true)}
+          className="relative shrink-0 rounded-full p-2 text-ink-600 hover:bg-cream-100"
+          aria-label={unread > 0 ? `${t.orders.chat} · ${t.orders.unreadMessages(unread)}` : t.orders.chat}
+          title={t.orders.chat}
+        >
+          <MessageCircle size={20} />
+          {unread > 0 && (
+            <span className="absolute top-0.5 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
+              {unread}
+            </span>
+          )}
+        </button>
       </div>
+      <OrderChat order={order} role={role} open={chatOpen} onClose={() => setChatOpen(false)} onRead={markChatRead} />
       {role === "seller" && order.deliveryAddress && (
         <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-cream-100 px-3 py-2 text-xs text-ink-600">
           <MapPin size={13} className="mt-0.5 shrink-0" />
@@ -94,6 +138,7 @@ function OrderRow({
           </span>
         </p>
       )}
+      {!order.isStoreOrder && <OrderHandoff order={order} role={role} onUpdated={onUpdated} />}
       {role === "buyer" && order.status === "completed" && (
         <div className="mt-2 flex items-center justify-end gap-2">
           {order.reviewRating ? (
@@ -110,7 +155,7 @@ function OrderRow({
           )}
         </div>
       )}
-      {openStatuses.includes(order.status) && (
+      {order.isStoreOrder && openStatuses.includes(order.status) && (
         <div className="mt-2 flex items-center justify-end gap-3">
           {error && <p className="text-xs text-danger">{error}</p>}
           <Button variant="secondary" size="sm" onClick={handleComplete} disabled={completing}>
@@ -166,6 +211,10 @@ export function OrdersView() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  // Message notifications link to /orders?chat=<orderId> to open that chat.
+  const [chatOrderId] = useState(() =>
+    typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("chat"),
+  );
 
   const load = useCallback(() => {
     return Promise.all([fetchMyOrders(), fetchNotifications()]).then(([ordersData, notificationsData]) => {
@@ -179,15 +228,16 @@ export function OrdersView() {
     load();
   }, [load]);
 
+  // Merged, because order actions return the order without its unread count.
+  const handleOrderUpdated = useCallback((updated: Order) => {
+    setOrders((prev) => prev.map((o) => (o.id === updated.id ? { ...o, ...updated } : o)));
+  }, []);
+
   if (!user || loading) return null;
 
   const purchases = orders.filter((o) => o.buyerId === user.id);
   const sales = orders.filter((o) => o.sellerId === user.id);
   const unreadCount = notifications.filter((n) => !n.read).length;
-
-  function handleOrderUpdated(updated: Order) {
-    setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
-  }
 
   async function handleMarkRead(id: string) {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
@@ -214,7 +264,7 @@ export function OrdersView() {
               ) : (
                 <div className="divide-y divide-line">
                   {purchases.map((o) => (
-                    <OrderRow key={o.id} order={o} role="buyer" onUpdated={handleOrderUpdated} />
+                    <OrderRow key={o.id} order={o} role="buyer" onUpdated={handleOrderUpdated} initialChatOpen={o.id === chatOrderId} />
                   ))}
                 </div>
               )}
@@ -232,7 +282,7 @@ export function OrdersView() {
               ) : (
                 <div className="divide-y divide-line">
                   {sales.map((o) => (
-                    <OrderRow key={o.id} order={o} role="seller" onUpdated={handleOrderUpdated} />
+                    <OrderRow key={o.id} order={o} role="seller" onUpdated={handleOrderUpdated} initialChatOpen={o.id === chatOrderId} />
                   ))}
                 </div>
               )}

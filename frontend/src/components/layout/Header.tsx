@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Bell, Building2, LogOut, Menu, Plus, Search, ShieldCheck, ShoppingCart, Store, X } from "lucide-react";
+import { Bell, Building2, LogOut, Menu, Plus, Search, ShieldCheck, ShoppingCart, Store, Wallet, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAuth } from "@/lib/auth-context";
 import { fetchNotifications } from "@/lib/api";
@@ -129,6 +129,9 @@ export function Header() {
               </Link>
               <Link href="/orders" className="rounded-full p-2 text-ink-600 hover:bg-cream-100" aria-label={t.header.orders}>
                 <ShoppingCart size={20} />
+              </Link>
+              <Link href="/wallet" className="rounded-full p-2 text-ink-600 hover:bg-cream-100" aria-label={t.header.wallet}>
+                <Wallet size={20} />
               </Link>
               <Link href="/profile" aria-label={t.header.profile}>
                 <Avatar name={user.name} size={34} />

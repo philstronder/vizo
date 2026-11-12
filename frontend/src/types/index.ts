@@ -119,6 +119,49 @@ export interface Order {
   // Store orders are delivered: the buyer's phone and delivery address.
   buyerPhone?: string;
   deliveryAddress?: DeliveryAddress;
+  isStoreOrder: boolean;
+  // Community sales: the platform holds the payment until both sides confirm
+  // the handoff, then releases it to the seller as credits. Unset for store
+  // orders and orders placed before escrow existed.
+  paymentStatus?: PaymentStatus;
+  paidWithCredits: number;
+  meetupAt?: string; // ISO; the latest proposed meetup time
+  meetupProposedBy?: "buyer" | "seller";
+  meetupConfirmed: boolean;
+  buyerConfirmedDelivery: boolean;
+  sellerConfirmedDelivery: boolean;
+  unreadMessages?: number; // chat messages from the other side not yet read
+}
+
+// Private chat between an order's buyer and seller.
+export interface OrderMessage {
+  id: string;
+  orderId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  read: boolean; // whether the other participant has seen it
+  createdAt: string;
+}
+
+export type PaymentStatus = "held" | "released" | "refunded";
+
+export type CreditTransactionType = "sale" | "purchase" | "refund" | "withdrawal";
+
+export interface CreditTransaction {
+  id: string;
+  type: CreditTransactionType;
+  amount: number; // positive adds credits, negative spends them
+  orderId?: string;
+  listingTitle?: string;
+  pixKey?: string;
+  createdAt: string;
+}
+
+export interface Wallet {
+  balance: number; // credits available to spend or withdraw
+  held: number; // sales still waiting for both sides to confirm the handoff
+  transactions: CreditTransaction[];
 }
 
 export type NotificationType =
@@ -127,7 +170,12 @@ export type NotificationType =
   | "message"
   | "outbid"
   | "listing_ending"
-  | "order_completed";
+  | "order_completed"
+  | "meetup_proposed"
+  | "meetup_confirmed"
+  | "delivery_confirmed"
+  | "payment_released"
+  | "order_cancelled";
 
 export interface Notification {
   id: string;

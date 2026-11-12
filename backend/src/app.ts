@@ -12,6 +12,7 @@ import { storesRouter } from "./routes/stores.routes";
 import { adminsRouter } from "./routes/admins.routes";
 import { condominiumsRouter } from "./routes/condominiums.routes";
 import { cepRouter } from "./routes/cep.routes";
+import { walletRouter } from "./routes/wallet.routes";
 
 export const app = express();
 
@@ -33,6 +34,7 @@ app.use("/api/stores", storesRouter);
 app.use("/api/admins", adminsRouter);
 app.use("/api/condominiums", condominiumsRouter);
 app.use("/api/cep", cepRouter);
+app.use("/api/wallet", walletRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

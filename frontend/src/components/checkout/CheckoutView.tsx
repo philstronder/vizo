@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { checkout, fetchListing } from "@/lib/api";
+import { checkout, fetchListing, fetchWallet } from "@/lib/api";
 import { Card, CardBody } from "@/components/ui/Card";
-import { FieldGroup, Input, Select } from "@/components/ui/Field";
+import { Checkbox, FieldGroup, Input, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { PlaceholderImage } from "@/components/listings/PlaceholderImage";
-import { formatCurrency } from "@/lib/format";
-import { CreditCard, MapPin } from "lucide-react";
+import { formatCurrency, toDateTimeLocalValue } from "@/lib/format";
+import { CreditCard, MapPin, ShieldCheck, Wallet } from "lucide-react";
 import type { Listing } from "@/types";
 import { useI18n } from "@/i18n/I18nProvider";
 import { storeHref, useStoreMode } from "@/lib/store-mode";
@@ -23,7 +23,9 @@ export function CheckoutView({ listingId }: { listingId: string }) {
   const [loading, setLoading] = useState(true);
 
   const [pickupLocation, setPickupLocation] = useState("Lobby");
-  const [pickupTime, setPickupTime] = useState("");
+  const [meetupAt, setMeetupAt] = useState("");
+  const [creditBalance, setCreditBalance] = useState(0);
+  const [useCredits, setUseCredits] = useState(false);
   const [cardNumber, setCardNumber] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +36,13 @@ export function CheckoutView({ listingId }: { listingId: string }) {
       .catch(() => setListing(null))
       .finally(() => setLoading(false));
   }, [listingId]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchWallet()
+      .then((wallet) => setCreditBalance(wallet.balance))
+      .catch(() => setCreditBalance(0));
+  }, [user]);
 
   // Store-mode viewers can only buy from their store.
   const outsideStore = !!storeMode && !!listing && listing.storeId !== storeMode;
@@ -58,6 +67,8 @@ export function CheckoutView({ listingId }: { listingId: string }) {
   const fees = 0;
   const total = price + fees;
   const isStoreProduct = !!listing.storeId;
+  const creditsApplied = useCredits ? Math.min(creditBalance, total) : 0;
+  const cardAmount = Math.round((total - creditsApplied) * 100) / 100;
   const isAuctionWin = listing.type === "auction" && user && listing.maxBidderId === user.id;
 
   async function handleConfirm(e: React.FormEvent) {
@@ -69,7 +80,9 @@ export function CheckoutView({ listingId }: { listingId: string }) {
         listingId,
         // Store products aren't handed over inside a building.
         pickupLocation: isStoreProduct ? undefined : pickupLocation,
-        pickupTime: isStoreProduct ? undefined : pickupTime || undefined,
+        // datetime-local values are in the buyer's time zone; send them as UTC.
+        meetupAt: isStoreProduct ? undefined : new Date(meetupAt).toISOString(),
+        useCredits: creditsApplied > 0,
       });
       // Store-mode viewers stay in the store; everyone else tracks it in Orders.
       router.push(storeMode ? `${storeHref(storeMode)}?purchased=1` : "/orders");
@@ -118,6 +131,18 @@ export function CheckoutView({ listingId }: { listingId: string }) {
                 <span>{t.checkout.total}</span>
                 <span>{formatCurrency(total, locale)}</span>
               </div>
+              {creditsApplied > 0 && (
+                <>
+                  <div className="flex justify-between text-ink-600">
+                    <span>{t.checkout.paidWithCredits}</span>
+                    <span>−{formatCurrency(creditsApplied, locale)}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-ink">
+                    <span>{t.checkout.toPayByCard}</span>
+                    <span>{formatCurrency(cardAmount, locale)}</span>
+                  </div>
+                </>
+              )}
             </div>
           </CardBody>
         </Card>
@@ -140,8 +165,15 @@ export function CheckoutView({ listingId }: { listingId: string }) {
                   ))}
                 </Select>
               </FieldGroup>
-              <FieldGroup label={t.checkout.preferredTime} hint={t.checkout.preferredTimeHint}>
-                <Input value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} placeholder={t.checkout.preferredTimePlaceholder} />
+              <FieldGroup label={t.checkout.meetupTime} htmlFor="meetup-at" hint={t.checkout.meetupTimeHint} className="mb-0">
+                <Input
+                  id="meetup-at"
+                  type="datetime-local"
+                  required
+                  min={toDateTimeLocalValue(new Date())}
+                  value={meetupAt}
+                  onChange={(e) => setMeetupAt(e.target.value)}
+                />
               </FieldGroup>
             </CardBody>
           </Card>
@@ -152,23 +184,43 @@ export function CheckoutView({ listingId }: { listingId: string }) {
             <h2 className="mb-3 flex items-center gap-1.5 font-bold text-ink">
               <CreditCard size={16} /> {t.checkout.paymentMethod}
             </h2>
-            <FieldGroup label={t.checkout.cardNumber}>
-              <Input
-                required
-                value={cardNumber}
-                onChange={(e) => setCardNumber(e.target.value)}
-                placeholder="4242 4242 4242 4242"
-                inputMode="numeric"
-              />
-            </FieldGroup>
+            {creditBalance > 0 && (
+              <div className="mb-4 flex items-center gap-2 rounded-lg bg-cream-100 px-3 py-2.5">
+                <Wallet size={15} className="shrink-0 text-ink-600" />
+                <Checkbox
+                  checked={useCredits}
+                  onChange={(e) => setUseCredits(e.target.checked)}
+                  label={t.checkout.useCredits(formatCurrency(creditBalance, locale))}
+                />
+              </div>
+            )}
+            {cardAmount > 0 ? (
+              <FieldGroup label={t.checkout.cardNumber}>
+                <Input
+                  required
+                  value={cardNumber}
+                  onChange={(e) => setCardNumber(e.target.value)}
+                  placeholder="4242 4242 4242 4242"
+                  inputMode="numeric"
+                />
+              </FieldGroup>
+            ) : (
+              <p className="mb-4 text-sm text-ink-600">{t.checkout.coveredByCredits}</p>
+            )}
             <p className="text-xs text-ink-400">{t.checkout.secureNote}</p>
+            {!isStoreProduct && (
+              <p className="mt-3 flex items-start gap-1.5 text-xs text-ink-600">
+                <ShieldCheck size={14} className="mt-px shrink-0 text-success" />
+                {t.checkout.escrowNote}
+              </p>
+            )}
           </CardBody>
         </Card>
 
         {error && <p className="mb-3 text-sm font-medium text-danger">{error}</p>}
 
         <Button type="submit" fullWidth size="lg" disabled={submitting}>
-          {submitting ? t.checkout.processing : t.checkout.confirmAndPay(formatCurrency(total, locale))}
+          {submitting ? t.checkout.processing : t.checkout.confirmAndPay(formatCurrency(cardAmount > 0 ? cardAmount : total, locale))}
         </Button>
       </form>
     </div>

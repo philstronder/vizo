@@ -1,5 +1,7 @@
+import type { PoolClient } from "pg";
 import { pool } from "./pool";
 import { toDeliveryAddress, type UserRow } from "./users";
+import { addCreditTransaction, lockBalance, toCents } from "./credits";
 
 // The buyer's address_* columns are joined in for store order deliveries.
 export interface OrderRow
@@ -30,7 +32,18 @@ export interface OrderRow
   review_rating: number | null;
   store_id: string | null;
   buyer_phone: string | null;
+  payment_status: "held" | "released" | "refunded" | null;
+  paid_with_credits: string;
+  meetup_at: Date | null;
+  meetup_proposed_by: string | null;
+  meetup_confirmed: boolean;
+  buyer_confirmed_at: Date | null;
+  seller_confirmed_at: Date | null;
+  // Only set by listOrdersForUser: messages from the other side the user hasn't read.
+  unread_messages?: number;
 }
+
+const OPEN_STATUSES = ["pending_pickup", "ready_for_pickup", "shipped"];
 
 
 const ORDER_SELECT = `
@@ -78,12 +91,29 @@ export function toApiOrder(row: OrderRow) {
     reviewRating: row.review_rating ?? undefined,
     buyerPhone: row.store_id ? (row.buyer_phone ?? undefined) : undefined,
     deliveryAddress: row.store_id ? toDeliveryAddress(row) : undefined,
+    isStoreOrder: !!row.store_id,
+    paymentStatus: row.payment_status ?? undefined,
+    paidWithCredits: Number(row.paid_with_credits),
+    meetupAt: row.meetup_at?.toISOString(),
+    meetupProposedBy: row.meetup_proposed_by
+      ? row.meetup_proposed_by === row.buyer_id ? "buyer" : "seller"
+      : undefined,
+    meetupConfirmed: row.meetup_confirmed,
+    buyerConfirmedDelivery: !!row.buyer_confirmed_at,
+    sellerConfirmedDelivery: !!row.seller_confirmed_at,
+    unreadMessages: row.unread_messages,
   };
 }
 
 export async function listOrdersForUser(userId: string): Promise<OrderRow[]> {
   const { rows } = await pool.query<OrderRow>(
-    `${ORDER_SELECT} WHERE o.buyer_id = $1 OR o.seller_id = $1 ORDER BY o.created_at DESC`,
+    `SELECT * FROM (${ORDER_SELECT}) o,
+       LATERAL (
+         SELECT COUNT(*)::int AS unread_messages FROM order_messages m
+         WHERE m.order_id = o.id AND m.author_id <> $1 AND m.read_at IS NULL
+       ) unread
+     WHERE o.buyer_id = $1 OR o.seller_id = $1
+     ORDER BY o.created_at DESC`,
     [userId]
   );
   return rows;
@@ -93,12 +123,16 @@ export interface CreateOrderInput {
   listingId: string;
   buyerId: string;
   pickupLocation?: string;
-  pickupTime?: string;
+  meetupAt?: Date;
+  useCredits?: boolean;
 }
 
 // Buying a listing transactionally: locks the listing, verifies it's
 // purchasable, snapshots the agreed price, takes one unit (marking it sold
 // when none are left), and creates the order in one atomic unit.
+// Community sales need a suggested meetup time and their payment is held by
+// the platform until both sides confirm the handoff. With useCredits, the
+// buyer's credits pay as much of the price as they cover.
 export async function checkoutListingTx(
   input: CreateOrderInput
 ): Promise<{ ok: true; orderId: string } | { ok: false; reason: string }> {
@@ -114,8 +148,9 @@ export async function checkoutListingTx(
       current_bid: string | null;
       max_bidder_id: string | null;
       quantity: number;
+      store_id: string | null;
     }>(
-      "SELECT id, seller_id, type, status, price, current_bid, max_bidder_id, quantity FROM listings WHERE id = $1 FOR UPDATE",
+      "SELECT id, seller_id, type, status, price, current_bid, max_bidder_id, quantity, store_id FROM listings WHERE id = $1 FOR UPDATE",
       [input.listingId]
     );
     const listing = rows[0];
@@ -136,7 +171,19 @@ export async function checkoutListingTx(
       return { ok: false, reason: "Only the winning bidder can check out this auction" };
     }
 
+    const isCommunitySale = !listing.store_id;
+    if (isCommunitySale && !input.meetupAt) {
+      await client.query("ROLLBACK");
+      return { ok: false, reason: "Suggest a date and time to meet the seller" };
+    }
+
     const price = Number(listing.type === "auction" ? listing.current_bid : listing.price);
+    let paidWithCredits = 0;
+    if (input.useCredits) {
+      const balance = await lockBalance(client, input.buyerId);
+      paidWithCredits = Math.min(toCents(balance), toCents(price)) / 100;
+    }
+
     await client.query(
       `UPDATE listings
        SET quantity = quantity - 1,
@@ -145,13 +192,33 @@ export async function checkoutListingTx(
       [input.listingId]
     );
     const { rows: orderRows } = await client.query<{ id: string }>(
-      `INSERT INTO orders (listing_id, buyer_id, seller_id, price, pickup_location, pickup_time)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO orders (listing_id, buyer_id, seller_id, price, pickup_location,
+                           payment_status, paid_with_credits, meetup_at, meetup_proposed_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING id`,
-      [input.listingId, input.buyerId, listing.seller_id, price, input.pickupLocation ?? null, input.pickupTime ?? null]
+      [
+        input.listingId,
+        input.buyerId,
+        listing.seller_id,
+        price,
+        input.pickupLocation ?? null,
+        isCommunitySale ? "held" : null,
+        paidWithCredits,
+        isCommunitySale ? input.meetupAt : null,
+        isCommunitySale ? input.buyerId : null,
+      ]
     );
+    const orderId = orderRows[0].id;
+    if (paidWithCredits > 0) {
+      await addCreditTransaction(client, {
+        userId: input.buyerId,
+        type: "purchase",
+        amount: -paidWithCredits,
+        orderId,
+      });
+    }
     await client.query("COMMIT");
-    return { ok: true, orderId: orderRows[0].id };
+    return { ok: true, orderId };
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;
@@ -165,26 +232,155 @@ export async function findOrderById(id: string): Promise<OrderRow | null> {
   return rows[0] ?? null;
 }
 
-// Marks an order as delivered. Only the buyer or seller may do it, and only
-// while the order is still open, so completed/cancelled orders are left alone.
-export async function completeOrder(
-  orderId: string,
-  userId: string
-): Promise<{ ok: true } | { ok: false; status: 403 | 404 | 409; reason: string }> {
-  const { rowCount } = await pool.query(
-    `UPDATE orders SET status = 'completed'
-     WHERE id = $1 AND (buyer_id = $2 OR seller_id = $2)
-       AND status IN ('pending_pickup', 'ready_for_pickup', 'shipped')`,
-    [orderId, userId]
-  );
-  if (rowCount) return { ok: true };
+type OrderResult<T> =
+  | { ok: true; order: OrderRow; value: T }
+  | { ok: false; status: 403 | 404 | 409; reason: string };
 
-  const order = await findOrderById(orderId);
-  if (!order) return { ok: false, status: 404, reason: "Order not found" };
-  if (order.buyer_id !== userId && order.seller_id !== userId) {
-    return { ok: false, status: 403, reason: "Only the buyer or seller can update this order" };
+// Thrown inside withLockedOrder to roll back and answer 409.
+class OrderConflict extends Error {}
+
+// Runs fn on the order with its row locked, after checking that userId is the
+// buyer or the seller, and returns the updated order.
+async function withLockedOrder<T>(
+  orderId: string,
+  userId: string,
+  fn: (client: PoolClient, order: OrderRow) => Promise<T>
+): Promise<OrderResult<T>> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query<OrderRow>(`${ORDER_SELECT} WHERE o.id = $1 FOR UPDATE OF o`, [orderId]);
+    const order = rows[0];
+    if (!order) {
+      await client.query("ROLLBACK");
+      return { ok: false, status: 404, reason: "Order not found" };
+    }
+    if (order.buyer_id !== userId && order.seller_id !== userId) {
+      await client.query("ROLLBACK");
+      return { ok: false, status: 403, reason: "Only the buyer or seller can update this order" };
+    }
+    const value = await fn(client, order);
+    await client.query("COMMIT");
+    const updated = await findOrderById(orderId);
+    return { ok: true, order: updated!, value };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    if (err instanceof OrderConflict) return { ok: false, status: 409, reason: err.message };
+    throw err;
+  } finally {
+    client.release();
   }
-  return { ok: false, status: 409, reason: `This order is already ${order.status}` };
+}
+
+function conflict(reason: string): never {
+  throw new OrderConflict(reason);
+}
+
+function assertOpen(order: OrderRow) {
+  if (!OPEN_STATUSES.includes(order.status)) conflict(`This order is already ${order.status}`);
+}
+
+// Records that userId handed over (seller) or received (buyer) the item.
+// Store orders complete on the first confirmation, as before. Community
+// orders complete once both sides have confirmed, which releases the held
+// payment to the seller as credits.
+export async function confirmDelivery(orderId: string, userId: string) {
+  return withLockedOrder(orderId, userId, async (client, order) => {
+    assertOpen(order);
+    const isBuyer = order.buyer_id === userId;
+    if (isBuyer ? order.buyer_confirmed_at : order.seller_confirmed_at) {
+      conflict("You already confirmed this delivery");
+    }
+
+    // The seller has to agree to a meetup time before the handoff can happen.
+    if (!order.store_id && order.meetup_at && !order.meetup_confirmed) {
+      conflict("Agree on the meetup time before confirming the handoff");
+    }
+
+    const otherConfirmed = isBuyer ? !!order.seller_confirmed_at : !!order.buyer_confirmed_at;
+    const completed = !!order.store_id || otherConfirmed;
+    const release = completed && order.payment_status === "held";
+    await client.query(
+      `UPDATE orders SET
+         ${isBuyer ? "buyer_confirmed_at" : "seller_confirmed_at"} = now(),
+         status = CASE WHEN $2 THEN 'completed'::order_status ELSE status END,
+         payment_status = CASE WHEN $3 THEN 'released'::payment_status ELSE payment_status END
+       WHERE id = $1`,
+      [orderId, completed, release]
+    );
+    const releasedAmount = release ? Number(order.price) - Number(order.fees) : 0;
+    if (releasedAmount > 0) {
+      await addCreditTransaction(client, {
+        userId: order.seller_id,
+        type: "sale",
+        amount: releasedAmount,
+        orderId,
+      });
+    }
+    return { completed, releasedAmount };
+  });
+}
+
+// Either side proposes a (new) meetup time; it's agreed once the other accepts.
+export async function proposeMeetup(orderId: string, userId: string, meetupAt: Date) {
+  return withLockedOrder(orderId, userId, async (client, order) => {
+    if (order.store_id) conflict("Store orders are delivered, not picked up");
+    assertOpen(order);
+    await client.query(
+      "UPDATE orders SET meetup_at = $2, meetup_proposed_by = $3, meetup_confirmed = FALSE WHERE id = $1",
+      [orderId, meetupAt, userId]
+    );
+  });
+}
+
+export async function acceptMeetup(orderId: string, userId: string) {
+  return withLockedOrder(orderId, userId, async (client, order) => {
+    assertOpen(order);
+    if (!order.meetup_at) conflict("No meetup time has been proposed");
+    if (order.meetup_confirmed) conflict("The meetup is already confirmed");
+    if (order.meetup_proposed_by === userId) {
+      conflict("Waiting for the other side to accept your proposed time");
+    }
+    await client.query("UPDATE orders SET meetup_confirmed = TRUE WHERE id = $1", [orderId]);
+  });
+}
+
+// Cancels an open community order, refunds the buyer and puts the item back
+// on sale. The seller can cancel until a handoff is confirmed; the buyer only
+// until the meetup is agreed, so the seller isn't left waiting at a meetup
+// the buyer walked away from. Credits the buyer spent come back as credits;
+// the card part is refunded to the card (mocked).
+export async function cancelOrder(orderId: string, userId: string) {
+  return withLockedOrder(orderId, userId, async (client, order) => {
+    if (order.store_id) conflict("Store orders can't be cancelled here");
+    assertOpen(order);
+    if (order.buyer_confirmed_at || order.seller_confirmed_at) {
+      conflict("The handoff was already confirmed, so this order can't be cancelled");
+    }
+    if (order.buyer_id === userId && order.meetup_confirmed) {
+      conflict("The meetup is already agreed. Ask the seller to cancel");
+    }
+
+    await client.query(
+      `UPDATE orders SET status = 'cancelled',
+         payment_status = CASE WHEN payment_status = 'held' THEN 'refunded'::payment_status ELSE payment_status END
+       WHERE id = $1`,
+      [orderId]
+    );
+    const credits = Number(order.paid_with_credits);
+    if (credits > 0) {
+      await addCreditTransaction(client, { userId: order.buyer_id, type: "refund", amount: credits, orderId });
+    }
+    // Direct sales go back on sale; a cancelled auction just ends.
+    await client.query(
+      `UPDATE listings SET
+         quantity = quantity + 1,
+         status = CASE WHEN type = 'direct' THEN 'active'::listing_status ELSE 'ended'::listing_status END
+       WHERE id = $1`,
+      [order.listing_id]
+    );
+    return { cancelledByBuyer: order.buyer_id === userId };
+  });
 }
 
 // Lets the buyer rate the seller once the order is completed. The UNIQUE

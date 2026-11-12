@@ -32,6 +32,26 @@ npm run dev              # http://localhost:3000
 Register an account at `/register` (address verification is a mocked file
 picker — any image "uploads" instantly) and you're in.
 
+## Tests
+
+Both apps use [Vitest](https://vitest.dev).
+
+```bash
+cd backend
+npm test                  # unit + HTTP route tests, database mocked (no Postgres needed)
+npm run test:integration  # orders, escrow, credits and chat against a real Postgres
+npm run test:all          # both
+npm run typecheck         # also type-checks the tests
+
+cd frontend
+npm test                  # lib + component tests (jsdom, React Testing Library)
+```
+
+Integration tests need the compose Postgres running. They create and migrate
+a separate `vizo_test` database on it and truncate its tables before every
+test, so your dev data is never touched. Point them elsewhere with
+`TEST_DATABASE_URL`; the database name must end in `_test`.
+
 ## TV show stores
 
 Admins create a store per TV show at `/stores`. Each store page shows a QR
