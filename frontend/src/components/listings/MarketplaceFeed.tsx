@@ -52,11 +52,11 @@ export function MarketplaceFeed() {
     if (filters.type && filters.type !== "all") {
       items = items.filter((l) => l.type === filters.type);
     }
-    if (filters.maxPrice !== undefined) {
-      items = items.filter((l) => (l.price ?? l.currentBid ?? l.startingPrice ?? 0) <= filters.maxPrice!);
-    }
-
     const priceOf = (l: (typeof items)[number]) => l.price ?? l.currentBid ?? l.startingPrice ?? 0;
+    const { minPrice, maxPrice } = filters;
+    if (minPrice !== undefined) items = items.filter((l) => priceOf(l) >= minPrice);
+    if (maxPrice !== undefined) items = items.filter((l) => priceOf(l) <= maxPrice);
+
     if (sort === "price-asc") items = [...items].sort((a, b) => priceOf(a) - priceOf(b));
     if (sort === "price-desc") items = [...items].sort((a, b) => priceOf(b) - priceOf(a));
     if (sort === "newest")

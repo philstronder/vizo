@@ -1,16 +1,14 @@
 "use client";
 
 import type { ListingCategory, ListingCondition, ListingFilters as Filters } from "@/types";
-import { Checkbox, Radio } from "@/components/ui/Field";
+import { Checkbox, Input, Radio } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Card";
 import { useI18n } from "@/i18n/I18nProvider";
-import { formatCurrency } from "@/lib/format";
+import { currencySymbol } from "@/lib/format";
 
 const categories: ListingCategory[] = ["furniture", "electronics", "appliances", "vehicles", "clothing", "books", "plants", "services", "real-estate", "other"];
 
 const conditions: ListingCondition[] = ["new", "used-excellent", "used-good"];
-
-const MAX_PRICE = 500;
 
 export function ListingFilters({
   filters,
@@ -20,6 +18,7 @@ export function ListingFilters({
   onChange: (next: Filters) => void;
 }) {
   const { locale, t } = useI18n();
+  const symbol = currencySymbol(locale);
   const selectedCategories = filters.categories ?? [];
   const selectedConditions = filters.conditions ?? [];
 
@@ -57,20 +56,23 @@ export function ListingFilters({
 
       <div className="mb-5">
         <h3 className="text-xs font-bold uppercase tracking-wide text-ink-400 mb-2.5">{t.filters.priceRange}</h3>
-        <div className="flex items-center gap-2 text-sm text-ink-600 mb-2">
-          <span>{formatCurrency(filters.minPrice ?? 0, locale)}</span>
+        <div className="flex items-center gap-2">
+          <PriceInput
+            symbol={symbol}
+            placeholder={t.filters.min}
+            ariaLabel={t.filters.minPrice}
+            value={filters.minPrice}
+            onChange={(minPrice) => onChange({ ...filters, minPrice })}
+          />
           <span className="text-ink-400">&ndash;</span>
-          <span>{formatCurrency(filters.maxPrice ?? MAX_PRICE, locale)}</span>
+          <PriceInput
+            symbol={symbol}
+            placeholder={t.filters.max}
+            ariaLabel={t.filters.maxPrice}
+            value={filters.maxPrice}
+            onChange={(maxPrice) => onChange({ ...filters, maxPrice })}
+          />
         </div>
-        <input
-          type="range"
-          min={0}
-          max={MAX_PRICE}
-          step={5}
-          value={filters.maxPrice ?? MAX_PRICE}
-          onChange={(e) => onChange({ ...filters, maxPrice: Number(e.target.value) })}
-          className="w-full accent-amber"
-        />
       </div>
 
       <div className="mb-5">
@@ -111,5 +113,42 @@ export function ListingFilters({
         </div>
       </div>
     </Card>
+  );
+}
+
+function PriceInput({
+  symbol,
+  placeholder,
+  ariaLabel,
+  value,
+  onChange,
+}: {
+  symbol: string;
+  placeholder: string;
+  ariaLabel: string;
+  value: number | undefined;
+  onChange: (next: number | undefined) => void;
+}) {
+  return (
+    <div className="relative flex-1 min-w-0">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-400">
+        {symbol}
+      </span>
+      <Input
+        type="number"
+        inputMode="decimal"
+        min={0}
+        step="any"
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        value={value ?? ""}
+        onChange={(e) => {
+          const raw = e.target.value;
+          const n = Number(raw);
+          onChange(raw === "" || Number.isNaN(n) || n < 0 ? undefined : n);
+        }}
+        className="pl-9 pr-2"
+      />
+    </div>
   );
 }
