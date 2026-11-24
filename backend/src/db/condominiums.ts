@@ -24,6 +24,11 @@ export async function listCondominiums(): Promise<CondominiumRow[]> {
   return rows;
 }
 
+export async function findCondominiumById(id: string): Promise<CondominiumRow | null> {
+  const { rows } = await pool.query<CondominiumRow>("SELECT * FROM condominiums WHERE id = $1", [id]);
+  return rows[0] ?? null;
+}
+
 // Matched like users.building_name, ignoring case and surrounding spaces.
 export async function findCondominiumByName(name: string): Promise<CondominiumRow | null> {
   const { rows } = await pool.query<CondominiumRow>(

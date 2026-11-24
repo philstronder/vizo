@@ -18,6 +18,8 @@ const ADDRESS = {
   state: "SP",
 };
 
+const PHOTO = "data:image/jpeg;base64,/9j/4AAQSkZJRg==";
+
 const resident = {
   name: "Ana Souza",
   email: "ana@example.com",
@@ -25,6 +27,7 @@ const resident = {
   unitNumber: "42",
   buildingBlock: "B",
   buildingName: "edifício aurora",
+  proofPhoto: PHOTO,
 };
 
 beforeEach(async () => {
@@ -44,8 +47,10 @@ describe("accounts", () => {
       buildingName: "Edifício Aurora", // the list's spelling
       buildingBlock: "B",
       unitNumber: "42",
-      verified: true,
+      verified: false, // until a building admin approves the proof of residency
+      verificationStatus: "pending",
       isAdmin: false,
+      buildingAdminOf: [],
     });
 
     const { rows } = await pool.query<{ password_hash: string }>("SELECT password_hash FROM users");
@@ -85,6 +90,7 @@ describe("accounts", () => {
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ phone: "(11) 91234-5678", deliveryAddress: { ...ADDRESS, complement: "Apt 4" } });
     expect(res.body.buildingName).toBeUndefined();
+    expect(res.body.verificationStatus).toBe("approved"); // nothing to prove
   });
 
   it("signs in with the right password only", async () => {
@@ -113,9 +119,13 @@ describe("accounts", () => {
       expect(res.body).toMatchObject({ name: "Ana S.", buildingName: "Edifício Aurora", unitNumber: "42", buildingBlock: "B" });
     });
 
-    it("moves to another listed condominium, using the list's spelling", async () => {
-      const res = await patch({ name: "Ana", buildingName: "torre boreal", unitNumber: "7" });
-      expect(res.body).toMatchObject({ buildingName: "Torre Boreal", unitNumber: "7" });
+    it("moves to another listed condominium with a new proof, using the list's spelling", async () => {
+      await pool.query("UPDATE users SET verified = TRUE");
+      const move = { name: "Ana", buildingName: "torre boreal", unitNumber: "7" };
+      expect((await patch(move)).body.code).toBe("residency_proof_required");
+
+      const res = await patch({ ...move, proofPhoto: PHOTO });
+      expect(res.body).toMatchObject({ buildingName: "Torre Boreal", unitNumber: "7", verificationStatus: "pending" });
     });
 
     it("clears the block with an empty string, and keeps it when omitted", async () => {

@@ -25,6 +25,16 @@ export const errorMessages = {
   cep_unavailable: "CEP lookup is unavailable",
   cep_not_found: "CEP not found",
 
+  // proof of residency and building admins
+  residency_not_verified: "Your proof of residency hasn't been approved yet",
+  residency_proof_required: "Send a photo proving you live in this building",
+  residency_already_verified: "Your residency is already verified",
+  residency_reviewers_only: "Only building admins can review proofs of residency",
+  residency_request_not_found: "This request was already reviewed, or doesn't exist",
+  cannot_review_own_residency: "You can't review your own proof of residency",
+  building_admin_email_not_found: "No account with this email. Ask them to sign up first.",
+  building_admin_not_found: "This person isn't a building admin of this condominium",
+
   // listings, bids and stores
   listing_not_found: "Listing not found",
   listing_not_found_or_not_owner: "Listing not found, or you don't own it",

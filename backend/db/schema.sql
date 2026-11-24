@@ -328,3 +328,32 @@ FROM (
   WHERE params IS NULL
 ) p
 WHERE n.id = p.id AND p.params ? 'listingTitle';
+
+-- Proof of residency. Residents send a photo of a document at sign-up (or when
+-- they move to another building) and stay unverified, without access to their
+-- community, until a building admin of their condominium (or a platform admin)
+-- approves it. A rejection keeps the reason so the resident can send a new
+-- photo. Accounts created before this review existed were verified at sign-up.
+ALTER TABLE users ALTER COLUMN verified SET DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_submitted_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_reviewed_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_rejection_reason TEXT;
+CREATE INDEX IF NOT EXISTS idx_users_pending_verification
+  ON users (lower(trim(building_name))) WHERE NOT verified AND building_name IS NOT NULL;
+
+-- Platform admins nominate building admins, who review the proofs of
+-- residency sent by people signing up to their condominium. Someone can look
+-- after several condominiums, and needn't live in them (e.g. a property manager).
+CREATE TABLE IF NOT EXISTS building_admins (
+  user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  condominium_id    UUID NOT NULL REFERENCES condominiums(id) ON DELETE CASCADE,
+  created_by        UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, condominium_id)
+);
+CREATE INDEX IF NOT EXISTS idx_building_admins_condominium ON building_admins(condominium_id);
+
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'residency_submitted';
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'residency_approved';
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'residency_rejected';

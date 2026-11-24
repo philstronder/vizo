@@ -7,6 +7,8 @@ export interface NotificationParams {
   actorName?: string;
   amount?: number;
   variant?: string;
+  buildingName?: string;
+  reason?: string; // why a proof of residency was rejected
 }
 
 export interface NotificationRow {

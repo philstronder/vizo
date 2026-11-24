@@ -19,6 +19,7 @@ import { findUserById } from "../db/users";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 import { badRequest, forbidden, notFound, unauthorized } from "../lib/http-error";
 import { findViewableListing } from "../lib/listing-access";
+import { assertVerifiedResident } from "../lib/residency";
 
 export const listingsRouter = Router();
 
@@ -52,6 +53,7 @@ listingsRouter.get("/", async (req, res, next) => {
       const viewer = await findUserById(req.userId);
       if (!viewer) throw unauthorized();
       if (viewer.building_name === null) throw forbidden("tv_account_no_community");
+      assertVerifiedResident(viewer);
       scope = { buildingName: viewer.building_name };
     }
 
@@ -114,6 +116,8 @@ listingsRouter.post("/", requireAuth, async (req, res, next) => {
       if (!(await findStoreById(input.storeId))) throw notFound("store_not_found");
     } else if (seller.building_name === null) {
       throw forbidden("building_required_to_list");
+    } else {
+      assertVerifiedResident(seller);
     }
     const listing = await createListing({
       sellerId: req.userId!,
