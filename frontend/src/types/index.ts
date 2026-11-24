@@ -10,6 +10,7 @@ export type ListingCategory =
   | "books"
   | "plants"
   | "services"
+  | "real-estate"
   | "other";
 
 export interface User {

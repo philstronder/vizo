@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { useI18n } from "@/i18n/I18nProvider";
 import { formatCurrency } from "@/lib/format";
 
-const categories: ListingCategory[] = ["furniture", "electronics", "appliances", "vehicles", "clothing", "books", "plants", "services", "other"];
+const categories: ListingCategory[] = ["furniture", "electronics", "appliances", "vehicles", "clothing", "books", "plants", "services", "real-estate", "other"];
 
 const conditions: ListingCondition[] = ["new", "used-excellent", "used-good"];
 

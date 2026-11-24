@@ -28,7 +28,7 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 DO $$ BEGIN
-  CREATE TYPE listing_category AS ENUM ('furniture', 'electronics', 'books', 'plants', 'other', 'appliances', 'vehicles', 'clothing', 'services');
+  CREATE TYPE listing_category AS ENUM ('furniture', 'electronics', 'books', 'plants', 'other', 'appliances', 'vehicles', 'clothing', 'services', 'real-estate');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 -- Keeps databases created before these categories existed in sync.
@@ -36,6 +36,7 @@ ALTER TYPE listing_category ADD VALUE IF NOT EXISTS 'appliances';
 ALTER TYPE listing_category ADD VALUE IF NOT EXISTS 'vehicles';
 ALTER TYPE listing_category ADD VALUE IF NOT EXISTS 'clothing';
 ALTER TYPE listing_category ADD VALUE IF NOT EXISTS 'services';
+ALTER TYPE listing_category ADD VALUE IF NOT EXISTS 'real-estate';
 
 CREATE TABLE IF NOT EXISTS listings (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),

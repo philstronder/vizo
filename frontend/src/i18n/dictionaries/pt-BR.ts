@@ -44,6 +44,7 @@ export const ptBR: Dictionary = {
       books: "Livros",
       plants: "Plantas",
       services: "Serviços",
+      "real-estate": "Imóveis",
       other: "Outros",
     },
     condition: {

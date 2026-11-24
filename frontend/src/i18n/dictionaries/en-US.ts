@@ -53,6 +53,7 @@ export const enUS = {
       books: "Books",
       plants: "Plants",
       services: "Services",
+      "real-estate": "Real estate",
       other: "Other",
     } satisfies Record<ListingCategory, string>,
     condition: {
