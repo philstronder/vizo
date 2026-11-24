@@ -614,6 +614,7 @@ export const enUS = {
       `${name} confirmed the handoff. Confirm it too to complete the order.`,
     orderCompleted: (title: string) => `${title} delivered`,
     orderCompletedBody: (name: string) => `${name} marked this order as delivered.`,
+    orderCompletedHandoff: (name: string) => `${name} confirmed the handoff. The order is complete.`,
     orderCompletedRateBuyer: (name: string) =>
       `${name} confirmed the handoff. Rate the buyer so other sellers know how it went.`,
     orderCompletedRateSeller: (name: string) =>
@@ -708,6 +709,8 @@ export const enUS = {
     already_rated: "You already rated this order.",
     only_seller_can_rate_buyer: "Only the seller can rate this buyer.",
     rate_buyer_after_delivery: "You can rate the buyer once the order is delivered.",
+    rate_seller_to_confirm: "Rate the seller to confirm the handoff.",
+    rate_buyer_to_confirm: "Rate the buyer to confirm the handoff.",
     insufficient_credits: "You don't have enough credits for this withdrawal.",
     notification_not_found: "Notification not found.",
   } satisfies Record<ApiErrorCode, string | ((value: string) => string)>,
@@ -742,6 +745,9 @@ export const enUS = {
     pickRating: "Pick a rating from 1 to 5 stars",
     error: "Could not save your rating",
     submit: "Submit rating",
+    requiredToConfirmSeller: "Rate the seller to confirm the handoff. Your rating is required.",
+    requiredToConfirmBuyer: "Rate the buyer to confirm the handoff. Your rating is required.",
+    submitAndConfirm: "Rate and confirm",
   },
 };
 

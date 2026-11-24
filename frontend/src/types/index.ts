@@ -280,5 +280,7 @@ export type ApiErrorCode =
   | "already_rated"
   | "only_seller_can_rate_buyer"
   | "rate_buyer_after_delivery"
+  | "rate_seller_to_confirm"
+  | "rate_buyer_to_confirm"
   | "insufficient_credits"
   | "notification_not_found";

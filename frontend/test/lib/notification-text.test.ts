@@ -28,6 +28,21 @@ describe("notificationText", () => {
     });
   });
 
+  it("tells the other side a community order is complete", () => {
+    const n: Notification = {
+      ...base,
+      type: "order_completed",
+      params: { listingTitle: "Bike", actorName: "Ana", variant: "handoff" },
+    };
+    expect(notificationText(n, getDictionary("en-US"), "en-US").body).toBe(
+      "Ana confirmed the handoff. The order is complete.",
+    );
+    expect(notificationText(n, getDictionary("pt-BR"), "pt-BR").body).toBe(
+      "Ana confirmou a entrega. O pedido foi concluído.",
+    );
+  });
+
+  // Sent before rating became part of confirming the handoff.
   it("asks the seller to rate the buyer once the order completes", () => {
     const n: Notification = {
       ...base,

@@ -53,7 +53,9 @@ export function notificationText(
       return {
         title: tn.orderCompleted(title),
         body:
-          p.variant === "rateBuyer"
+          p.variant === "handoff"
+            ? tn.orderCompletedHandoff(name)
+            : p.variant === "rateBuyer"
             ? tn.orderCompletedRateBuyer(name)
             : p.variant === "rateSeller"
               ? tn.orderCompletedRateSeller(name)

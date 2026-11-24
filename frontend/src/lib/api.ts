@@ -427,8 +427,16 @@ export async function fetchMyOrders(): Promise<Order[]> {
   return request("/api/orders/mine");
 }
 
-export async function completeOrder(id: string): Promise<Order> {
-  return request(`/api/orders/${id}/complete`, { method: "PATCH" });
+// Community sales confirm the handoff together with the mandatory rating of
+// the other side; store orders confirm without one.
+export async function completeOrder(
+  id: string,
+  review?: { rating: number; comment?: string },
+): Promise<Order> {
+  return request(`/api/orders/${id}/complete`, {
+    method: "PATCH",
+    body: review ? JSON.stringify(review) : undefined,
+  });
 }
 
 // Suggests a (new) meetup time; the other side has to accept it.

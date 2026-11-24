@@ -235,9 +235,9 @@ function NotificationRow({
       <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cream-100 text-ink-600">
         <Icon size={14} />
       </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-ink line-clamp-1">{title}</p>
-        <p className="text-xs text-ink-400 line-clamp-2">{body}</p>
+      <div className="min-w-0 flex-1" title={body ? `${title}\n${body}` : title}>
+        <p className="text-sm font-semibold leading-snug text-ink break-words">{title}</p>
+        <p className="mt-0.5 text-xs text-ink-400 line-clamp-3 break-words">{body}</p>
         <p className="mt-0.5 text-[11px] text-ink-400">{formatRelativeTime(notification.createdAt, locale)}</p>
       </div>
       {!notification.read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-500" />}

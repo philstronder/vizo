@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CalendarClock, CircleCheck, Clock, ShieldCheck, Undo2, X } from "lucide-react";
-import { acceptMeetup, cancelOrder, completeOrder, proposeMeetup } from "@/lib/api";
+import { acceptMeetup, cancelOrder, proposeMeetup } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { formatDateTime, toDateTimeLocalValue } from "@/lib/format";
@@ -10,12 +10,14 @@ import { cn } from "@/lib/cn";
 import type { Order, OrderStatus } from "@/types";
 import { useI18n } from "@/i18n/I18nProvider";
 import { errorMessage } from "@/lib/error-message";
+import { RateOrderModal } from "./RateOrderModal";
 
 const openStatuses: OrderStatus[] = ["pending_pickup", "ready_for_pickup", "shipped"];
 
 // A community sale's handoff: the payment the platform holds, the meetup the
 // two neighbors agree on, and each side's confirmation of the handoff. The
-// order completes (and the seller gets paid) once both have confirmed.
+// order completes (and the seller gets paid) once both have confirmed. Each
+// side has to rate the other to confirm.
 export function OrderHandoff({
   order,
   role,
@@ -31,6 +33,7 @@ export function OrderHandoff({
   const [proposing, setProposing] = useState(false);
   const [newMeetupAt, setNewMeetupAt] = useState("");
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [rating, setRating] = useState(false);
 
   const isOpen = openStatuses.includes(order.status);
   const otherName = role === "buyer" ? order.sellerName : order.buyerName;
@@ -198,10 +201,19 @@ export function OrderHandoff({
                   <Clock size={13} /> {t.orders.youConfirmed} &middot; {t.orders.waitingForConfirmation(otherName)}
                 </p>
               ) : (
-                <Button variant="secondary" size="sm" onClick={() => run(() => completeOrder(order.id))} disabled={busy}>
-                  <CircleCheck size={14} />{" "}
-                  {busy ? t.common.saving : role === "buyer" ? t.orders.confirmReceived : t.orders.confirmHandedOver}
-                </Button>
+                <>
+                  <Button variant="secondary" size="sm" onClick={() => setRating(true)} disabled={busy}>
+                    <CircleCheck size={14} /> {role === "buyer" ? t.orders.confirmReceived : t.orders.confirmHandedOver}
+                  </Button>
+                  <RateOrderModal
+                    order={order}
+                    target={role === "buyer" ? "seller" : "buyer"}
+                    open={rating}
+                    onClose={() => setRating(false)}
+                    onRated={onUpdated}
+                    confirmsHandoff
+                  />
+                </>
               )}
             </>
           )}

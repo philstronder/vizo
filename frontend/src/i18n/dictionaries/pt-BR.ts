@@ -600,6 +600,7 @@ export const ptBR: Dictionary = {
       `${name} confirmou a entrega. Confirme também para concluir o pedido.`,
     orderCompleted: (title) => `${title} entregue`,
     orderCompletedBody: (name) => `${name} marcou este pedido como entregue.`,
+    orderCompletedHandoff: (name) => `${name} confirmou a entrega. O pedido foi concluído.`,
     orderCompletedRateBuyer: (name) =>
       `${name} confirmou a entrega. Avalie o comprador para que outros vendedores saibam como foi.`,
     orderCompletedRateSeller: (name) =>
@@ -691,6 +692,8 @@ export const ptBR: Dictionary = {
     already_rated: "Você já avaliou este pedido.",
     only_seller_can_rate_buyer: "Apenas o vendedor pode avaliar este comprador.",
     rate_buyer_after_delivery: "Você pode avaliar o comprador depois que o pedido for entregue.",
+    rate_seller_to_confirm: "Avalie o vendedor para confirmar a entrega.",
+    rate_buyer_to_confirm: "Avalie o comprador para confirmar a entrega.",
     insufficient_credits: "Você não tem créditos suficientes para este saque.",
     notification_not_found: "Notificação não encontrada.",
   },
@@ -724,5 +727,8 @@ export const ptBR: Dictionary = {
     pickRating: "Escolha uma nota de 1 a 5 estrelas",
     error: "Não foi possível salvar sua avaliação",
     submit: "Enviar avaliação",
+    requiredToConfirmSeller: "Avalie o vendedor para confirmar a entrega. A avaliação é obrigatória.",
+    requiredToConfirmBuyer: "Avalie o comprador para confirmar a entrega. A avaliação é obrigatória.",
+    submitAndConfirm: "Avaliar e confirmar",
   },
 };
