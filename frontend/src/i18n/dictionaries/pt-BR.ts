@@ -2,8 +2,9 @@ import type { Dictionary } from "./en-US";
 
 export const ptBR: Dictionary = {
   meta: {
-    title: "VIZO — Marketplace do Condomínio",
-    description: "Compre e venda com seus vizinhos. Preço fixo ou lances, apenas para moradores verificados.",
+    title: "MyVizo — Marketplace do Condomínio",
+    description:
+      "Compre e venda com seus vizinhos. Preço fixo ou lances, apenas para moradores verificados.",
   },
 
   common: {
@@ -96,7 +97,7 @@ export const ptBR: Dictionary = {
     login: {
       title: "Bem-vindo de volta",
       subtitle: "Entre no marketplace do seu condomínio",
-      newHere: "Novo no VIZO?",
+      newHere: "Novo no MyVizo?",
       verifyResidency: "Verifique sua residência",
       submit: "Entrar",
       submitting: "Entrando...",
@@ -129,7 +130,8 @@ export const ptBR: Dictionary = {
       uploaded: (file) => `${file} enviado`,
       submit: "Criar Conta",
       submitting: "Criando conta...",
-      verificationRequired: "A verificação de endereço é necessária antes de anunciar ou comprar itens.",
+      verificationRequired:
+        "A verificação de endereço é necessária antes de anunciar ou comprar itens.",
       error: "Não foi possível criar sua conta",
     },
     viewerRegister: {
@@ -212,7 +214,8 @@ export const ptBR: Dictionary = {
     itemName: "Nome do Item",
     itemNamePlaceholder: "ex.: Escrivaninha de Carvalho Antiga",
     description: "Descrição",
-    descriptionPlaceholder: "Descreva o estado do item, o tamanho e outros detalhes que os compradores devem saber.",
+    descriptionPlaceholder:
+      "Descreva o estado do item, o tamanho e outros detalhes que os compradores devem saber.",
     category: "Categoria",
     condition: "Condição",
     selectType: "Tipo de Anúncio",
@@ -223,7 +226,8 @@ export const ptBR: Dictionary = {
     setPrice: (currency) => `Preço (${currency})`,
     photos: "Fotos do Item (até 5)",
     contactInfo: "Contato",
-    contactHint: "Exibido aos compradores após a compra para combinar a retirada.",
+    contactHint:
+      "Exibido aos compradores após a compra para combinar a retirada.",
     contactPlaceholder: "Telefone ou forma de contato preferida",
     publishing: "Publicando...",
     publishListing: "Publicar Anúncio",
@@ -236,9 +240,11 @@ export const ptBR: Dictionary = {
     publishAuction: "Publicar com Lances",
     error: "Não foi possível publicar o anúncio",
     storeTitle: "Adicionar Produto à Loja",
-    storeSubtitle: "Este produto será listado na loja do programa de TV, visível para quem escanear o QR code.",
+    storeSubtitle:
+      "Este produto será listado na loja do programa de TV, visível para quem escanear o QR code.",
     quantity: "Unidades em estoque",
-    quantityHint: "Quantas unidades deste produto estão disponíveis para venda.",
+    quantityHint:
+      "Quantas unidades deste produto estão disponíveis para venda.",
   },
 
   photos: {
@@ -277,7 +283,7 @@ export const ptBR: Dictionary = {
     cardNumber: "Número do Cartão",
     secureNote: "Pagamento online seguro.",
     escrowNote:
-      "O VIZO guarda o seu pagamento e só o libera ao vendedor depois que vocês dois confirmarem a entrega. Se o pedido for cancelado, você é reembolsado.",
+      "O MyVizo guarda o seu pagamento e só o libera ao vendedor depois que vocês dois confirmarem a entrega. Se o pedido for cancelado, você é reembolsado.",
     processing: "Processando...",
     confirmAndPay: (total) => `Confirmar e Pagar ${total}`,
     error: "Não foi possível concluir o pagamento",
@@ -303,7 +309,8 @@ export const ptBR: Dictionary = {
     saveError: "Não foi possível salvar as alterações",
     noAddress: "Nenhum endereço de entrega cadastrado.",
     joinBuildingTitle: "Participar da comunidade de um condomínio (opcional)",
-    joinBuildingHint: "Preencha os dois para comprar e vender com seus vizinhos no VIZO.",
+    joinBuildingHint:
+      "Preencha os dois para comprar e vender com seus vizinhos no MyVizo.",
   },
 
   orders: {
@@ -330,12 +337,14 @@ export const ptBR: Dictionary = {
     markDelivered: "Marcar como entregue",
     updateError: "Não foi possível atualizar o pedido",
     payment: {
-      held: "Pagamento retido pelo VIZO",
+      held: "Pagamento retido pelo MyVizo",
       released: "Pagamento liberado ao vendedor",
       refunded: "Pagamento reembolsado",
     },
-    heldHintBuyer: "Liberado ao vendedor quando vocês dois confirmarem a entrega.",
-    heldHintSeller: "Creditado na sua carteira quando vocês dois confirmarem a entrega.",
+    heldHintBuyer:
+      "Liberado ao vendedor quando vocês dois confirmarem a entrega.",
+    heldHintSeller:
+      "Creditado na sua carteira quando vocês dois confirmarem a entrega.",
     meetup: "Encontro",
     meetupAt: (when, place) => (place ? `${when} · ${place}` : when),
     meetupConfirmed: "Confirmado",
@@ -349,20 +358,26 @@ export const ptBR: Dictionary = {
     confirmHandedOver: "Entreguei o item",
     youConfirmed: "Você confirmou a entrega",
     waitingForConfirmation: (name) => `Aguardando ${name} confirmar`,
-    otherConfirmed: (name) => `${name} confirmou a entrega — confirme também para concluir o pedido.`,
+    otherConfirmed: (name) =>
+      `${name} confirmou a entrega — confirme também para concluir o pedido.`,
     cancelOrder: "Cancelar pedido",
-    confirmCancel: "Cancelar este pedido? O comprador é reembolsado e o item volta à venda.",
+    confirmCancel:
+      "Cancelar este pedido? O comprador é reembolsado e o item volta à venda.",
     keepOrder: "Manter pedido",
     cancelling: "Cancelando...",
-    confirmMeetupPrompt: (name) => `${name} sugeriu um horário de retirada. Confirme ou sugira outro.`,
-    handoffAfterMeetup: "Você pode confirmar a entrega depois que o horário do encontro for combinado.",
+    confirmMeetupPrompt: (name) =>
+      `${name} sugeriu um horário de retirada. Confirme ou sugira outro.`,
+    handoffAfterMeetup:
+      "Você pode confirmar a entrega depois que o horário do encontro for combinado.",
     chat: "Chat",
-    unreadMessages: (n) => `${n} ${n === 1 ? "mensagem não lida" : "mensagens não lidas"}`,
+    unreadMessages: (n) =>
+      `${n} ${n === 1 ? "mensagem não lida" : "mensagens não lidas"}`,
   },
 
   store: {
     adminTitle: "Lojas de Programas de TV",
-    adminSubtitle: "Cada loja tem seu próprio QR code para exibir no ar. Quem escanear só poderá navegar nessa loja.",
+    adminSubtitle:
+      "Cada loja tem seu próprio QR code para exibir no ar. Quem escanear só poderá navegar nessa loja.",
     newStore: "Nova loja",
     createStore: "Criar loja",
     creating: "Criando...",
@@ -381,20 +396,23 @@ export const ptBR: Dictionary = {
     addProduct: "Adicionar produto",
     edit: "Editar loja",
     delete: "Excluir loja",
-    confirmDelete: (name) => `Excluir a loja "${name}"? O QR code deixará de funcionar e os produtos sairão de venda.`,
+    confirmDelete: (name) =>
+      `Excluir a loja "${name}"? O QR code deixará de funcionar e os produtos sairão de venda.`,
     saveError: "Não foi possível salvar a loja",
     deleteError: "Não foi possível excluir a loja",
     qrTitle: "QR code para TV",
-    qrHint: "Exiba este código no ar. Ele abre esta loja no VIZO.",
+    qrHint: "Exiba este código no ar. Ele abre esta loja no MyVizo.",
     downloadQr: "Baixar PNG",
     copyLink: "Copiar link",
     copied: "Copiado!",
     officialProduct: "Loja do programa de TV",
-    purchased: "Pedido realizado! O vendedor entrará em contato sobre a entrega.",
+    purchased:
+      "Pedido realizado! O vendedor entrará em contato sobre a entrega.",
     signInToBuy: "Entre ou crie uma conta para comprar.",
     inStock: (n) => `${n} ${n === 1 ? "unidade" : "unidades"} em estoque`,
     soldOut: "Esgotado",
-    soldOutHint: "Todas as unidades foram vendidas. Adicione mais para voltar a vender.",
+    soldOutHint:
+      "Todas as unidades foram vendidas. Adicione mais para voltar a vender.",
     unitsToAdd: "Unidades a adicionar",
     addUnits: "Adicionar unidades",
     restockAndPublish: "Adicionar e republicar",
@@ -415,7 +433,8 @@ export const ptBR: Dictionary = {
     state: "Estado",
     cepLookingUp: "Buscando CEP...",
     cepNotFound: "CEP não encontrado",
-    cepLookupFailed: "Não foi possível buscar o CEP; preencha o endereço manualmente",
+    cepLookupFailed:
+      "Não foi possível buscar o CEP; preencha o endereço manualmente",
   },
 
   viewer: {
@@ -423,12 +442,14 @@ export const ptBR: Dictionary = {
     hint: "Escaneie o QR code exibido em um programa de TV para comprar na loja dele. Acompanhe suas compras em seus pedidos.",
     myOrders: "Meus pedidos",
     profile: "Meu perfil",
-    joinBuilding: "Mora em um condomínio que usa o VIZO? Adicione-o ao seu perfil para participar do marketplace.",
+    joinBuilding:
+      "Mora em um condomínio que usa o MyVizo? Adicione-o ao seu perfil para participar do marketplace.",
   },
 
   admins: {
     title: "Administradores",
-    subtitle: "Administradores podem criar, editar e excluir lojas de programas de TV e gerenciar esta lista.",
+    subtitle:
+      "Administradores podem criar, editar e excluir lojas de programas de TV e gerenciar esta lista.",
     email: "E-mail de uma conta existente",
     add: "Adicionar admin",
     adding: "Adicionando...",
@@ -447,15 +468,18 @@ export const ptBR: Dictionary = {
 
   condominiums: {
     title: "Condomínios",
-    subtitle: "Os moradores escolhem o condomínio nesta lista ao criar a conta.",
+    subtitle:
+      "Os moradores escolhem o condomínio nesta lista ao criar a conta.",
     name: "Nome do condomínio",
     add: "Adicionar condomínio",
     adding: "Adicionando...",
     addError: "Não foi possível adicionar o condomínio",
     remove: "Remover",
     removeError: "Não foi possível remover o condomínio",
-    confirmRemove: (name) => `Remover ${name} da lista? Os moradores atuais continuam na comunidade.`,
-    empty: "Nenhum condomínio cadastrado. Adicione um para que os moradores possam criar conta.",
+    confirmRemove: (name) =>
+      `Remover ${name} da lista? Os moradores atuais continuam na comunidade.`,
+    empty:
+      "Nenhum condomínio cadastrado. Adicione um para que os moradores possam criar conta.",
   },
 
   orderChat: {
@@ -472,7 +496,8 @@ export const ptBR: Dictionary = {
 
   wallet: {
     title: "Carteira",
-    subtitle: "Créditos das suas vendas. Use-os em outros itens ou faça um saque.",
+    subtitle:
+      "Créditos das suas vendas. Use-os em outros itens ou faça um saque.",
     balance: "Créditos disponíveis",
     held: "Retido em vendas pendentes",
     heldHint: "Liberado quando você e o comprador confirmarem cada entrega.",

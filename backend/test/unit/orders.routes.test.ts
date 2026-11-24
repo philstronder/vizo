@@ -93,7 +93,7 @@ describe("POST /api/orders (checkout)", () => {
       meetupAt: new Date(meetupAt),
     });
     expect(notifications()).toEqual([
-      expect.objectContaining({ userId: SELLER_ID, type: "sold", body: expect.stringMatching(/held by VIZO/) }),
+      expect.objectContaining({ userId: SELLER_ID, type: "sold", body: expect.stringMatching(/held by MyVizo/) }),
     ]);
   });
 

@@ -3,7 +3,19 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Bell, Building2, LogOut, Menu, Plus, Search, ShieldCheck, ShoppingCart, Store, Wallet, X } from "lucide-react";
+import {
+  Bell,
+  Building2,
+  LogOut,
+  Menu,
+  Plus,
+  Search,
+  ShieldCheck,
+  ShoppingCart,
+  Store,
+  Wallet,
+  X,
+} from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAuth } from "@/lib/auth-context";
 import { fetchNotifications } from "@/lib/api";
@@ -31,7 +43,8 @@ export function Header() {
     let active = true;
     fetchNotifications()
       .then((notifications) => {
-        if (active) setNotificationCount(notifications.filter((n) => !n.read).length);
+        if (active)
+          setNotificationCount(notifications.filter((n) => !n.read).length);
       })
       .catch(() => {});
     return () => {
@@ -68,21 +81,31 @@ export function Header() {
 
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink text-amber font-black text-lg">
-            V
+            M
           </span>
-          <span className="font-black text-lg tracking-tight text-ink hidden sm:inline">VIZO</span>
+          <span className="font-black text-lg tracking-tight text-ink hidden sm:inline">
+            MyVizo
+          </span>
         </Link>
 
         {user && (
           <span className="hidden lg:inline text-sm text-ink-400 border-l border-line pl-4">
-            {user.buildingName ? t.header.buildingMarketplace(user.buildingName) : t.header.tvStoreAccount}
+            {user.buildingName
+              ? t.header.buildingMarketplace(user.buildingName)
+              : t.header.tvStoreAccount}
           </span>
         )}
 
         {!isViewer && (
-          <form onSubmit={handleSearch} className="ml-auto flex-1 max-w-md hidden sm:block">
+          <form
+            onSubmit={handleSearch}
+            className="ml-auto flex-1 max-w-md hidden sm:block"
+          >
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" size={16} />
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"
+                size={16}
+              />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -93,25 +116,49 @@ export function Header() {
           </form>
         )}
 
-        <div className={cn("ml-auto flex items-center gap-1 sm:gap-2", !isViewer && "sm:ml-0")}>
+        <div
+          className={cn(
+            "ml-auto flex items-center gap-1 sm:gap-2",
+            !isViewer && "sm:ml-0",
+          )}
+        >
           <LanguageSwitcher />
           {user ? (
             <>
               {user.isAdmin && (
                 <>
-                  <Button href="/stores" variant="ghost" size="sm" className="hidden sm:inline-flex">
+                  <Button
+                    href="/stores"
+                    variant="ghost"
+                    size="sm"
+                    className="hidden sm:inline-flex"
+                  >
                     <Store size={16} /> {t.header.stores}
                   </Button>
-                  <Button href="/condominiums" variant="ghost" size="sm" className="hidden sm:inline-flex">
+                  <Button
+                    href="/condominiums"
+                    variant="ghost"
+                    size="sm"
+                    className="hidden sm:inline-flex"
+                  >
                     <Building2 size={16} /> {t.header.condominiums}
                   </Button>
-                  <Button href="/admins" variant="ghost" size="sm" className="hidden sm:inline-flex">
+                  <Button
+                    href="/admins"
+                    variant="ghost"
+                    size="sm"
+                    className="hidden sm:inline-flex"
+                  >
                     <ShieldCheck size={16} /> {t.header.admins}
                   </Button>
                 </>
               )}
               {!isViewer && (
-                <Button href="/sell/new" size="sm" className="hidden sm:inline-flex">
+                <Button
+                  href="/sell/new"
+                  size="sm"
+                  className="hidden sm:inline-flex"
+                >
                   <Plus size={16} /> {t.header.newListing}
                 </Button>
               )}
@@ -127,10 +174,18 @@ export function Header() {
                   </span>
                 )}
               </Link>
-              <Link href="/orders" className="rounded-full p-2 text-ink-600 hover:bg-cream-100" aria-label={t.header.orders}>
+              <Link
+                href="/orders"
+                className="rounded-full p-2 text-ink-600 hover:bg-cream-100"
+                aria-label={t.header.orders}
+              >
                 <ShoppingCart size={20} />
               </Link>
-              <Link href="/wallet" className="rounded-full p-2 text-ink-600 hover:bg-cream-100" aria-label={t.header.wallet}>
+              <Link
+                href="/wallet"
+                className="rounded-full p-2 text-ink-600 hover:bg-cream-100"
+                aria-label={t.header.wallet}
+              >
                 <Wallet size={20} />
               </Link>
               <Link href="/profile" aria-label={t.header.profile}>
@@ -161,7 +216,10 @@ export function Header() {
           {!isViewer && (
             <form onSubmit={handleSearch} className="mb-3">
               <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" size={16} />
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"
+                  size={16}
+                />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -180,18 +238,38 @@ export function Header() {
               )}
               {user.isAdmin && (
                 <>
-                  <Button href="/stores" variant="secondary" size="sm" fullWidth>
+                  <Button
+                    href="/stores"
+                    variant="secondary"
+                    size="sm"
+                    fullWidth
+                  >
                     <Store size={16} /> {t.header.stores}
                   </Button>
-                  <Button href="/condominiums" variant="secondary" size="sm" fullWidth>
+                  <Button
+                    href="/condominiums"
+                    variant="secondary"
+                    size="sm"
+                    fullWidth
+                  >
                     <Building2 size={16} /> {t.header.condominiums}
                   </Button>
-                  <Button href="/admins" variant="secondary" size="sm" fullWidth>
+                  <Button
+                    href="/admins"
+                    variant="secondary"
+                    size="sm"
+                    fullWidth
+                  >
                     <ShieldCheck size={16} /> {t.header.admins}
                   </Button>
                 </>
               )}
-              <Button variant="ghost" size="sm" fullWidth onClick={handleLogout}>
+              <Button
+                variant="ghost"
+                size="sm"
+                fullWidth
+                onClick={handleLogout}
+              >
                 <LogOut size={16} /> {t.header.signOut}
               </Button>
             </div>
@@ -229,9 +307,11 @@ function StoreModeHeader({ storeId }: { storeId: string }) {
       <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
         <Link href={home} className="flex items-center gap-2 shrink-0">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink text-amber font-black text-lg">
-            V
+            M
           </span>
-          <span className="font-black text-lg tracking-tight text-ink hidden sm:inline">VIZO</span>
+          <span className="font-black text-lg tracking-tight text-ink hidden sm:inline">
+            MyVizo
+          </span>
         </Link>
 
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
@@ -239,7 +319,10 @@ function StoreModeHeader({ storeId }: { storeId: string }) {
           {user ? (
             <>
               <Avatar name={user.name} size={34} />
-              <button onClick={handleLogout} className="text-xs font-medium text-ink-400 hover:text-ink ml-1">
+              <button
+                onClick={handleLogout}
+                className="text-xs font-medium text-ink-400 hover:text-ink ml-1"
+              >
                 {t.header.signOut}
               </button>
             </>
@@ -263,8 +346,12 @@ function BareHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-cream/90 backdrop-blur supports-[backdrop-filter]:bg-cream/70">
       <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-3 sm:px-6">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink text-amber font-black text-lg">V</span>
-        <span className="font-black text-lg tracking-tight text-ink hidden sm:inline">VIZO</span>
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink text-amber font-black text-lg">
+          M
+        </span>
+        <span className="font-black text-lg tracking-tight text-ink hidden sm:inline">
+          MyVizo
+        </span>
       </div>
     </header>
   );

@@ -74,7 +74,7 @@ ordersRouter.post("/", requireAuth, async (req, res, next) => {
         title: `${listing.title} sold!`,
         body: listing.store_id
           ? "Your item was purchased."
-          : "Your item was purchased and the payment is held by VIZO. Review the buyer's suggested meetup time.",
+          : "Your item was purchased and the payment is held by MyVizo. Review the buyer's suggested meetup time.",
         href: "/orders",
       });
     }

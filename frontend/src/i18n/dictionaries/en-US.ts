@@ -11,8 +11,9 @@ import type {
 // Strings that need data are functions so each language can order words freely.
 export const enUS = {
   meta: {
-    title: "VIZO — Community Marketplace",
-    description: "Buy and sell with your neighbors. Fixed price or auction, verified building residents only.",
+    title: "MyVizo — Community Marketplace",
+    description:
+      "Buy and sell with your neighbors. Fixed price or auction, verified building residents only.",
   },
 
   common: {
@@ -105,7 +106,7 @@ export const enUS = {
     login: {
       title: "Welcome back",
       subtitle: "Sign in to your building's marketplace",
-      newHere: "New to VIZO?",
+      newHere: "New to MyVizo?",
       verifyResidency: "Verify your residency",
       submit: "Sign In",
       submitting: "Signing in...",
@@ -138,12 +139,14 @@ export const enUS = {
       uploaded: (file: string) => `${file} uploaded`,
       submit: "Create Account",
       submitting: "Creating account...",
-      verificationRequired: "Address verification is required before you can list or buy items.",
+      verificationRequired:
+        "Address verification is required before you can list or buy items.",
       error: "Unable to create your account",
     },
     viewerRegister: {
       title: "Create your account",
-      subtitle: "Buy the products you saw on the show and get them delivered to your home",
+      subtitle:
+        "Buy the products you saw on the show and get them delivered to your home",
       haveAccount: "Already have an account?",
       yourDetails: "Your details",
       error: "Unable to create your account",
@@ -221,7 +224,8 @@ export const enUS = {
     itemName: "Item Name",
     itemNamePlaceholder: "e.g. Vintage Oak Desk",
     description: "Description",
-    descriptionPlaceholder: "Describe the item's condition, size, and any details buyers should know.",
+    descriptionPlaceholder:
+      "Describe the item's condition, size, and any details buyers should know.",
     category: "Category",
     condition: "Condition",
     selectType: "Select Listing Type",
@@ -245,7 +249,8 @@ export const enUS = {
     publishAuction: "Publish Auction",
     error: "Unable to publish listing",
     storeTitle: "Add a Store Product",
-    storeSubtitle: "This product will be listed in the TV show's store, visible to anyone who scans its QR code.",
+    storeSubtitle:
+      "This product will be listed in the TV show's store, visible to anyone who scans its QR code.",
     quantity: "Units in stock",
     quantityHint: "How many of this product are available to sell.",
   },
@@ -287,7 +292,7 @@ export const enUS = {
     cardNumber: "Card Number",
     secureNote: "Secure online payment.",
     escrowNote:
-      "VIZO holds your payment and only releases it to the seller after you both confirm the handoff. If the order is cancelled, you're refunded.",
+      "MyVizo holds your payment and only releases it to the seller after you both confirm the handoff. If the order is cancelled, you're refunded.",
     processing: "Processing...",
     confirmAndPay: (total: string) => `Confirm & Pay ${total}`,
     error: "Unable to complete checkout",
@@ -313,7 +318,8 @@ export const enUS = {
     saveError: "Unable to save changes",
     noAddress: "No delivery address yet.",
     joinBuildingTitle: "Join a building community (optional)",
-    joinBuildingHint: "Fill in both to buy and sell with your neighbors on VIZO.",
+    joinBuildingHint:
+      "Fill in both to buy and sell with your neighbors on MyVizo.",
   },
 
   orders: {
@@ -340,14 +346,16 @@ export const enUS = {
     markDelivered: "Mark as delivered",
     updateError: "Could not update order",
     payment: {
-      held: "Payment held by VIZO",
+      held: "Payment held by MyVizo",
       released: "Payment released to seller",
       refunded: "Payment refunded",
     } satisfies Record<PaymentStatus, string>,
     heldHintBuyer: "Released to the seller once you both confirm the handoff.",
-    heldHintSeller: "Paid into your wallet as credits once you both confirm the handoff.",
+    heldHintSeller:
+      "Paid into your wallet as credits once you both confirm the handoff.",
     meetup: "Meetup",
-    meetupAt: (when: string, place?: string) => (place ? `${when} · ${place}` : when),
+    meetupAt: (when: string, place?: string) =>
+      place ? `${when} · ${place}` : when,
     meetupConfirmed: "Confirmed",
     meetupWaitingOther: (name: string) => `Waiting for ${name} to accept`,
     meetupProposedBy: (name: string) => `${name} suggested this time`,
@@ -359,20 +367,26 @@ export const enUS = {
     confirmHandedOver: "I handed over the item",
     youConfirmed: "You confirmed the handoff",
     waitingForConfirmation: (name: string) => `Waiting for ${name} to confirm`,
-    otherConfirmed: (name: string) => `${name} confirmed the handoff — confirm it too to complete the order.`,
+    otherConfirmed: (name: string) =>
+      `${name} confirmed the handoff — confirm it too to complete the order.`,
     cancelOrder: "Cancel order",
-    confirmCancel: "Cancel this order? The buyer is refunded and the item goes back on sale.",
+    confirmCancel:
+      "Cancel this order? The buyer is refunded and the item goes back on sale.",
     keepOrder: "Keep order",
     cancelling: "Cancelling...",
-    confirmMeetupPrompt: (name: string) => `${name} suggested a pickup time. Confirm it or suggest another.`,
-    handoffAfterMeetup: "You can confirm the handoff once the meetup time is agreed.",
+    confirmMeetupPrompt: (name: string) =>
+      `${name} suggested a pickup time. Confirm it or suggest another.`,
+    handoffAfterMeetup:
+      "You can confirm the handoff once the meetup time is agreed.",
     chat: "Chat",
-    unreadMessages: (n: number) => `${n} unread ${n === 1 ? "message" : "messages"}`,
+    unreadMessages: (n: number) =>
+      `${n} unread ${n === 1 ? "message" : "messages"}`,
   },
 
   store: {
     adminTitle: "TV Show Stores",
-    adminSubtitle: "Each store has its own QR code to show on air. Viewers who scan it can only browse that store.",
+    adminSubtitle:
+      "Each store has its own QR code to show on air. Viewers who scan it can only browse that store.",
     newStore: "New store",
     createStore: "Create store",
     creating: "Creating...",
@@ -391,11 +405,12 @@ export const enUS = {
     addProduct: "Add product",
     edit: "Edit store",
     delete: "Delete store",
-    confirmDelete: (name: string) => `Delete the store "${name}"? Its QR code will stop working and its products will be taken off sale.`,
+    confirmDelete: (name: string) =>
+      `Delete the store "${name}"? Its QR code will stop working and its products will be taken off sale.`,
     saveError: "Unable to save the store",
     deleteError: "Unable to delete the store",
     qrTitle: "QR code for TV",
-    qrHint: "Show this code on air. It opens this store in VIZO.",
+    qrHint: "Show this code on air. It opens this store in MyVizo.",
     downloadQr: "Download PNG",
     copyLink: "Copy link",
     copied: "Copied!",
@@ -425,7 +440,8 @@ export const enUS = {
     state: "State",
     cepLookingUp: "Looking up ZIP code...",
     cepNotFound: "ZIP code not found",
-    cepLookupFailed: "Could not look up the ZIP code; fill in the address manually",
+    cepLookupFailed:
+      "Could not look up the ZIP code; fill in the address manually",
   },
 
   viewer: {
@@ -433,12 +449,14 @@ export const enUS = {
     hint: "Scan the QR code shown on a TV show to shop in its store. You can follow your purchases in your orders.",
     myOrders: "My orders",
     profile: "My profile",
-    joinBuilding: "Live in a building that uses VIZO? Add it to your profile to join its marketplace.",
+    joinBuilding:
+      "Live in a building that uses MyVizo? Add it to your profile to join its marketplace.",
   },
 
   admins: {
     title: "Admins",
-    subtitle: "Admins can create, edit and delete TV show stores, and manage this list.",
+    subtitle:
+      "Admins can create, edit and delete TV show stores, and manage this list.",
     email: "Email of an existing account",
     add: "Add admin",
     adding: "Adding...",
@@ -451,26 +469,30 @@ export const enUS = {
 
   condominiumSearch: {
     noResults: "No condominium found",
-    moreResults: (count: number) => `${count} more. Keep typing to narrow the list.`,
+    moreResults: (count: number) =>
+      `${count} more. Keep typing to narrow the list.`,
     clear: "Clear condominium",
   },
 
   condominiums: {
     title: "Condominiums",
-    subtitle: "Residents pick their condominium from this list when they sign up.",
+    subtitle:
+      "Residents pick their condominium from this list when they sign up.",
     name: "Condominium name",
     add: "Add condominium",
     adding: "Adding...",
     addError: "Unable to add condominium",
     remove: "Remove",
     removeError: "Unable to remove condominium",
-    confirmRemove: (name: string) => `Remove ${name} from the list? Current residents keep their community.`,
+    confirmRemove: (name: string) =>
+      `Remove ${name} from the list? Current residents keep their community.`,
     empty: "No condominiums yet. Add one so residents can sign up.",
   },
 
   orderChat: {
     title: (name: string) => `Chat with ${name}`,
-    subtitle: (item: string) => `About ${item} · only you two can see this conversation.`,
+    subtitle: (item: string) =>
+      `About ${item} · only you two can see this conversation.`,
     empty: "No messages yet. Say hi and arrange the pickup.",
     placeholder: "Write a message...",
     send: "Send",
@@ -482,7 +504,8 @@ export const enUS = {
 
   wallet: {
     title: "Wallet",
-    subtitle: "Credits from your sales. Spend them on other items or withdraw them.",
+    subtitle:
+      "Credits from your sales. Spend them on other items or withdraw them.",
     balance: "Available credits",
     held: "Held in pending sales",
     heldHint: "Released when you and the buyer both confirm each handoff.",
