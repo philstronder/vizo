@@ -14,5 +14,16 @@ export default defineConfig({
     mockReset: true,
     restoreMocks: true,
     unstubGlobals: true,
+    // `npm run test:coverage`. Pages and most views are exercised by the
+    // Playwright suite in e2e/, which this doesn't measure, so the totals are
+    // lower than the backend's. CI fails if coverage drops below these; raise
+    // them as coverage grows.
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/types/**"],
+      reporter: ["text-summary", "text", "html", "json-summary"],
+      thresholds: { lines: 37, statements: 37, functions: 44, branches: 85 },
+    },
   },
 });

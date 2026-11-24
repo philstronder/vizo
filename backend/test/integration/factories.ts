@@ -1,4 +1,5 @@
 import { pool } from "../../src/db/pool";
+import { AUTH_COOKIE_NAME, signAuthToken } from "../../src/lib/jwt";
 import { addCreditTransaction } from "../../src/db/credits";
 
 let seq = 0;
@@ -81,3 +82,21 @@ export async function ledger(userId: string) {
 }
 
 export const tomorrow = () => new Date(Date.now() + 86_400_000);
+
+// A Cookie header that signs an HTTP request in as userId.
+export function as(userId: string) {
+  return `${AUTH_COOKIE_NAME}=${signAuthToken({ userId })}`;
+}
+
+export async function getEmail(userId: string) {
+  const { rows } = await pool.query<{ email: string }>("SELECT email FROM users WHERE id = $1", [userId]);
+  return rows[0].email;
+}
+
+export async function notificationsOf(userId: string) {
+  const { rows } = await pool.query<{ type: string; title: string; read: boolean }>(
+    "SELECT type, title, read FROM notifications WHERE user_id = $1 ORDER BY created_at",
+    [userId]
+  );
+  return rows;
+}

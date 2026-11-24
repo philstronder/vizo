@@ -36,23 +36,82 @@ picker — any image "uploads" instantly) and you're in.
 
 ## Tests
 
-Both apps use [Vitest](https://vitest.dev).
+Every suite runs in CI on each push to `main` and every pull request (see
+[CI](#ci)).
 
 ```bash
 cd backend
 npm test                  # unit + HTTP route tests, database mocked (no Postgres needed)
-npm run test:integration  # orders, escrow, credits and chat against a real Postgres
+npm run test:integration  # every API area against a real Postgres
 npm run test:all          # both
+npm run test:coverage     # both, with a coverage report in coverage/
 npm run typecheck         # also type-checks the tests
 
 cd frontend
 npm test                  # lib + component tests (jsdom, React Testing Library)
+npm run test:coverage     # same, with a coverage report in coverage/
+
+cd e2e
+npm test                  # the whole app in a real browser (see below)
 ```
 
 Integration tests need the compose Postgres running. They create and migrate
 a separate `vizo_test` database on it and truncate its tables before every
 test, so your dev data is never touched. Point them elsewhere with
 `TEST_DATABASE_URL`; the database name must end in `_test`.
+
+**What each layer covers**
+
+- **Backend integration** (`backend/test/integration`): accounts, listings
+  and the feed, bidding (including simultaneous bids), Q&A, checkout, escrow,
+  meetups, handoffs, cancellations, credits, withdrawals, order chat,
+  notifications, stores, admins and condominiums, plus who may see or change
+  what.
+- **Backend unit** (`backend/test/unit`): route validation and error handling
+  with the database mocked, and helpers such as the listing access rule.
+- **Frontend** (`frontend/test`): formatting and the API client, plus the
+  components with the most logic: the condominium picker, the address fields
+  and ZIP code lookup, the listing wizard, the bid modal and the order handoff.
+- **E2E** (`e2e/tests`): sign-up and sign-in, listing, searching and filtering,
+  buying, bidding, the whole order lifecycle through payout, rating, wallet
+  withdrawal and cancellation, paying with credits, Q&A, notifications,
+  profile edits, switching language, the TV store flow from QR code to
+  delivery, and the admin screens.
+
+**Coverage.** `test:coverage` fails when coverage drops below the thresholds
+in `backend/vitest.config.ts` and `frontend/vitest.config.mts`. Raise them as
+coverage grows. The frontend's numbers are lower because its pages are
+covered by the E2E suite, which coverage doesn't measure. CI shows both
+reports in each run's summary and keeps the HTML report as an artifact.
+
+### End-to-end tests
+
+`e2e/` drives the real app in Chromium with [Playwright](https://playwright.dev).
+
+```bash
+cd e2e
+npm install
+npx playwright install chromium   # once
+npm test                          # or: npm run test:ui
+```
+
+It builds the frontend and starts it on :3100 plus the backend on :4100, so it
+runs alongside your dev servers. It needs the compose Postgres, and it wipes
+and re-creates a `vizo_e2e_test` database on every run (override with
+`E2E_DATABASE_URL`; the name must end in `_test`). Each test makes its own
+condominium and users, so tests run in parallel without seeing each other's
+data. ZIP code lookups are answered inside the tests, so nothing calls the
+real ViaCEP service. Failures keep a trace, screenshot and video. Open them
+with `npm run report`.
+
+### CI
+
+`.github/workflows/ci.yml` runs on every push to `main` and on every pull
+request. It runs the backend typecheck, unit and integration tests with
+coverage, and build; the frontend lint, typecheck, tests with coverage, and
+build; the mobile typecheck and lint; and the E2E suite. To block merging
+when any of these fails, mark these jobs as required status checks under the
+`main` branch protection rule.
 
 ## TV show stores
 

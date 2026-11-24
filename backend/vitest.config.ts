@@ -6,6 +6,16 @@ import { testDatabaseUrl } from "./test/integration/database-url";
 
 export default defineConfig({
   test: {
+    // `npm run test:coverage` measures unit and integration tests together.
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.ts"],
+      // Entry points and CLI scripts only wire things up.
+      exclude: ["src/server.ts", "src/db/migrate.ts", "src/db/make-admin.ts", "src/types/**"],
+      reporter: ["text-summary", "text", "html", "json-summary"],
+      // CI fails if coverage drops below these. Raise them as coverage grows.
+      thresholds: { lines: 95, statements: 95, functions: 95, branches: 85 },
+    },
     projects: [
       {
         test: {
