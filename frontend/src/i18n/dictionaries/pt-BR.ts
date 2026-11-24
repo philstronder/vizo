@@ -695,6 +695,24 @@ export const ptBR: Dictionary = {
     notification_not_found: "Notificação não encontrada.",
   },
 
+  validation: {
+    valueMissing: "Preencha este campo.",
+    selectMissing: "Selecione uma opção.",
+    checkboxMissing: "Marque esta caixa para continuar.",
+    fileMissing: "Selecione um arquivo.",
+    emailMismatch: "Informe um endereço de e-mail válido.",
+    urlMismatch: "Informe uma URL válida.",
+    numberBadInput: "Informe um número.",
+    invalidValue: "Informe um valor válido.",
+    patternMismatch: "Use o formato solicitado.",
+    tooShort: (min, current) => `Use pelo menos ${min} caracteres (você está usando ${current}).`,
+    tooLong: (max) => `Use no máximo ${max} caracteres.`,
+    numberTooLow: (min) => `O valor deve ser ${min} ou mais.`,
+    numberTooHigh: (max) => `O valor deve ser ${max} ou menos.`,
+    dateTooEarly: (min) => `Escolha ${min} ou depois.`,
+    dateTooLate: (max) => `Escolha ${max} ou antes.`,
+  },
+
   rate: {
     title: (name) => `Avaliar ${name}`,
     howDidItGo: (title) => `Como foi a compra de “${title}”?`,

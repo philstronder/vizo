@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import { useRouter } from "next/navigation";
 import { LOCALE_COOKIE, type Locale } from "./config";
 import { getDictionary, type Dictionary } from "./dictionaries";
+import { useLocalizedValidation } from "./useLocalizedValidation";
 
 interface I18nContextValue {
   locale: Locale;
@@ -31,6 +32,7 @@ export function I18nProvider({ initialLocale, children }: { initialLocale: Local
   );
 
   const value = useMemo(() => ({ locale, t: getDictionary(locale), setLocale }), [locale, setLocale]);
+  useLocalizedValidation(locale, value.t.validation);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

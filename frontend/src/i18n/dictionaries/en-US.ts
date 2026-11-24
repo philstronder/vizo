@@ -712,6 +712,25 @@ export const enUS = {
     notification_not_found: "Notification not found.",
   } satisfies Record<ApiErrorCode, string | ((value: string) => string)>,
 
+  // Messages for native form validation (required fields, min/max, etc.).
+  validation: {
+    valueMissing: "Please fill out this field.",
+    selectMissing: "Please select an option.",
+    checkboxMissing: "Please check this box to continue.",
+    fileMissing: "Please select a file.",
+    emailMismatch: "Please enter a valid email address.",
+    urlMismatch: "Please enter a valid URL.",
+    numberBadInput: "Please enter a number.",
+    invalidValue: "Please enter a valid value.",
+    patternMismatch: "Please match the requested format.",
+    tooShort: (min: number, current: number) => `Please use at least ${min} characters (you are using ${current}).`,
+    tooLong: (max: number) => `Please use at most ${max} characters.`,
+    numberTooLow: (min: string) => `Value must be ${min} or more.`,
+    numberTooHigh: (max: string) => `Value must be ${max} or less.`,
+    dateTooEarly: (min: string) => `Choose ${min} or later.`,
+    dateTooLate: (max: string) => `Choose ${max} or earlier.`,
+  },
+
   rate: {
     title: (name: string) => `Rate ${name}`,
     howDidItGo: (title: string) => `How did buying “${title}” go?`,
