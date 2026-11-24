@@ -89,10 +89,23 @@ ordersRouter.post("/", requireAuth, async (req, res, next) => {
   }
 });
 
-// The buyer confirms they received the item, or the seller that they handed it over.
+const reviewSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().trim().max(1000).optional(),
+});
+
+// The buyer confirms they received the item, or the seller that they handed
+// it over. On community sales the confirmation carries the mandatory rating
+// of the other side; store orders send an empty body.
 ordersRouter.patch("/:id/complete", requireAuth, async (req, res, next) => {
   try {
-    const result = await confirmDelivery(req.params.id as string, req.userId!);
+    const body = req.body ?? {};
+    const review = body.rating === undefined ? undefined : reviewSchema.parse(body);
+    const result = await confirmDelivery(
+      req.params.id as string,
+      req.userId!,
+      review && { rating: review.rating, comment: review.comment || undefined }
+    );
     if (!result.ok) throw new HttpError(result.status, result.reason, result.params);
     const { order, value } = result;
     const { actorName, otherId } = counterpart(order, req.userId!);
@@ -116,18 +129,15 @@ ordersRouter.patch("/:id/complete", requireAuth, async (req, res, next) => {
         params: { listingTitle: order.listing_title, actorName },
       });
     } else {
-      // A community sale is done: ask the other side to rate whoever confirmed
-      // last. The link opens the rating form on the orders page.
-      const ratesBuyer = otherId === order.seller_id;
+      // A community sale is done. Both sides already rated each other when
+      // they confirmed, so there's nothing left to ask.
       await createNotification({
         userId: otherId,
         type: "order_completed",
         title: `${order.listing_title} delivered`,
-        body: ratesBuyer
-          ? `${actorName} confirmed the handoff. Rate the buyer so other sellers know how it went.`
-          : `${actorName} confirmed the handoff. Rate the seller so other buyers know how it went.`,
-        href: `/orders?rate=${order.id}`,
-        params: { listingTitle: order.listing_title, actorName, variant: ratesBuyer ? "rateBuyer" : "rateSeller" },
+        body: `${actorName} confirmed the handoff. The order is complete.`,
+        href: "/orders",
+        params: { listingTitle: order.listing_title, actorName, variant: "handoff" },
       });
     }
     if (value.releasedAmount > 0) {
@@ -211,11 +221,8 @@ ordersRouter.post("/:id/cancel", requireAuth, async (req, res, next) => {
   }
 });
 
-const reviewSchema = z.object({
-  rating: z.number().int().min(1).max(5),
-  comment: z.string().trim().max(1000).optional(),
-});
-
+// Rating outside the handoff: store orders, and community orders completed
+// before rating became part of confirming the handoff.
 // POST /:id/review: the buyer rates the seller; /:id/buyer-review: the
 // seller rates the buyer.
 for (const [path, review] of [

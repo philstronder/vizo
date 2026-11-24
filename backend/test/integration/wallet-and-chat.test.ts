@@ -93,8 +93,8 @@ describe("community sale over HTTP", () => {
     const orderId = checkout.body.id;
 
     expect((await request(app).post(`/api/orders/${orderId}/meetup/accept`).set("Cookie", as(seller))).status).toBe(200);
-    expect((await request(app).patch(`/api/orders/${orderId}/complete`).set("Cookie", as(buyer))).status).toBe(200);
-    const done = await request(app).patch(`/api/orders/${orderId}/complete`).set("Cookie", as(seller));
+    expect((await request(app).patch(`/api/orders/${orderId}/complete`).set("Cookie", as(buyer)).send({ rating: 5 })).status).toBe(200);
+    const done = await request(app).patch(`/api/orders/${orderId}/complete`).set("Cookie", as(seller)).send({ rating: 4 });
     expect(done.body).toMatchObject({ status: "completed", paymentStatus: "released" });
 
     const wallet = await request(app).get("/api/wallet").set("Cookie", as(seller));

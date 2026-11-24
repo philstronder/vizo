@@ -129,8 +129,35 @@ describe("POST /api/orders (checkout)", () => {
 });
 
 describe("PATCH /api/orders/:id/complete", () => {
-  const complete = (userId: string) =>
-    request(app).patch(`/api/orders/${ORDER_ID}/complete`).set("Cookie", authCookie(userId));
+  const complete = (userId: string, body: object = { rating: 5 }) =>
+    request(app).patch(`/api/orders/${ORDER_ID}/complete`).set("Cookie", authCookie(userId)).send(body);
+
+  it("passes the rating that comes with the confirmation on", async () => {
+    vi.mocked(confirmDelivery).mockResolvedValue({ ok: true, order, value: { completed: false, releasedAmount: 0 } });
+    await complete(BUYER_ID, { rating: 4, comment: "  Great  " });
+    expect(confirmDelivery).toHaveBeenCalledWith(ORDER_ID, BUYER_ID, { rating: 4, comment: "Great" });
+
+    vi.mocked(confirmDelivery).mockClear();
+    await complete(SELLER_ID, { rating: 3, comment: "   " });
+    expect(confirmDelivery).toHaveBeenCalledWith(ORDER_ID, SELLER_ID, { rating: 3, comment: undefined });
+
+    // Store orders confirm without a body; confirmDelivery decides whether a rating is required.
+    vi.mocked(confirmDelivery).mockClear();
+    await complete(SELLER_ID, {});
+    expect(confirmDelivery).toHaveBeenCalledWith(ORDER_ID, SELLER_ID, undefined);
+  });
+
+  it.each([0, 6, 2.5, "5"])("rejects a confirmation rated %s", async (rating) => {
+    expect((await complete(BUYER_ID, { rating })).status).toBe(400);
+    expect(confirmDelivery).not.toHaveBeenCalled();
+  });
+
+  it("answers 409 when confirmDelivery wants a rating", async () => {
+    vi.mocked(confirmDelivery).mockResolvedValue({ ok: false, status: 409, reason: "rate_seller_to_confirm" });
+    const res = await complete(BUYER_ID, {});
+    expect(res.status).toBe(409);
+    expect(res.body).toMatchObject({ code: "rate_seller_to_confirm" });
+  });
 
   it("asks the other side to confirm after the first confirmation", async () => {
     vi.mocked(confirmDelivery).mockResolvedValue({ ok: true, order, value: { completed: false, releasedAmount: 0 } });
@@ -148,21 +175,14 @@ describe("PATCH /api/orders/:id/complete", () => {
     ]);
   });
 
-  it("asks the side that didn't confirm last to rate the other", async () => {
+  it("tells the other side the community order is complete, with nothing left to rate", async () => {
     vi.mocked(confirmDelivery).mockResolvedValue({ ok: true, order, value: { completed: true, releasedAmount: 0 } });
     await complete(BUYER_ID);
     expect(notifications()[0]).toMatchObject({
       userId: SELLER_ID,
-      href: `/orders?rate=${ORDER_ID}`,
-      params: expect.objectContaining({ variant: "rateBuyer" }),
-    });
-
-    vi.mocked(createNotification).mockClear();
-    await complete(SELLER_ID);
-    expect(notifications()[0]).toMatchObject({
-      userId: BUYER_ID,
-      href: `/orders?rate=${ORDER_ID}`,
-      params: expect.objectContaining({ variant: "rateSeller" }),
+      type: "order_completed",
+      href: "/orders",
+      params: expect.objectContaining({ variant: "handoff" }),
     });
   });
 

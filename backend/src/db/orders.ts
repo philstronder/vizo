@@ -298,11 +298,15 @@ function assertOpen(order: OrderRow) {
   if (!OPEN_STATUSES.includes(order.status)) conflict("order_already_status", { status: order.status });
 }
 
+export type HandoffReview = { rating: number; comment?: string };
+
 // Records that userId handed over (seller) or received (buyer) the item.
 // Store orders complete on the first confirmation, as before. Community
 // orders complete once both sides have confirmed, which releases the held
-// payment to the seller as credits.
-export async function confirmDelivery(orderId: string, userId: string) {
+// payment to the seller as credits. Rating the other side is mandatory on
+// community orders, so each side's confirmation carries its review: the
+// buyer's goes to seller_reviews and the seller's to buyer_reviews.
+export async function confirmDelivery(orderId: string, userId: string, review?: HandoffReview) {
   return withLockedOrder(orderId, userId, async (client, order) => {
     assertOpen(order);
     const isBuyer = order.buyer_id === userId;
@@ -313,6 +317,16 @@ export async function confirmDelivery(orderId: string, userId: string) {
     // The seller has to agree to a meetup time before the handoff can happen.
     if (!order.store_id && order.meetup_at && !order.meetup_confirmed) {
       conflict("meetup_not_agreed");
+    }
+
+    if (!order.store_id) {
+      if (!review) conflict(isBuyer ? "rate_seller_to_confirm" : "rate_buyer_to_confirm");
+      await client.query(
+        `INSERT INTO ${isBuyer ? "seller_reviews" : "buyer_reviews"} (order_id, seller_id, buyer_id, rating, comment)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (order_id) DO NOTHING`,
+        [order.id, order.seller_id, order.buyer_id, review.rating, review.comment ?? null]
+      );
     }
 
     const otherConfirmed = isBuyer ? !!order.seller_confirmed_at : !!order.buyer_confirmed_at;

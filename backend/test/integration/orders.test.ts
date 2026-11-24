@@ -35,6 +35,17 @@ async function agreedOrder(price = 100) {
   return orderId;
 }
 
+// Community confirmations carry the mandatory rating of the other side.
+const rated = { rating: 5 };
+
+// A community order completed before rating became part of the handoff, so
+// neither side has rated the other yet.
+async function unratedCompletedOrder() {
+  const orderId = await agreedOrder();
+  await pool.query("UPDATE orders SET status = 'completed', payment_status = 'released' WHERE id = $1", [orderId]);
+  return orderId;
+}
+
 describe("checkoutListingTx", () => {
   it("creates a held community order and marks a single item sold", async () => {
     const listingId = await insertListing(seller, { price: 80 });
@@ -189,7 +200,7 @@ describe("meetups", () => {
 describe("confirmDelivery", () => {
   it("needs the meetup agreed first", async () => {
     const orderId = await buy(await insertListing(seller));
-    expect(await confirmDelivery(orderId, buyer)).toMatchObject({
+    expect(await confirmDelivery(orderId, buyer, rated)).toMatchObject({
       ok: false,
       status: 409,
       reason: "meetup_not_agreed",
@@ -201,12 +212,12 @@ describe("confirmDelivery", () => {
     await pool.query("UPDATE orders SET fees = 20 WHERE id = $1", [orderId]);
     expect((await getWallet(seller)).held).toBe(100);
 
-    const first = await confirmDelivery(orderId, buyer);
+    const first = await confirmDelivery(orderId, buyer, rated);
     expect(first).toMatchObject({ ok: true, value: { completed: false, releasedAmount: 0 } });
     expect(first.ok && first.order.status).toBe("pending_pickup");
     expect(await ledger(seller)).toEqual([]);
 
-    const second = await confirmDelivery(orderId, seller);
+    const second = await confirmDelivery(orderId, seller, rated);
     expect(second).toMatchObject({ ok: true, value: { completed: true, releasedAmount: 100 } });
     expect(second.ok && second.order).toMatchObject({ status: "completed", payment_status: "released" });
 
@@ -216,15 +227,30 @@ describe("confirmDelivery", () => {
     expect(wallet.transactions[0]).toMatchObject({ type: "sale", amount: 100, orderId, listingTitle: "Bike" });
   });
 
+  it("requires each side of a community sale to rate the other to confirm", async () => {
+    const orderId = await agreedOrder();
+    expect(await confirmDelivery(orderId, buyer)).toMatchObject({ ok: false, status: 409, reason: "rate_seller_to_confirm" });
+    expect(await confirmDelivery(orderId, seller)).toMatchObject({ ok: false, status: 409, reason: "rate_buyer_to_confirm" });
+    expect(await findOrderById(orderId)).toMatchObject({ buyer_confirmed_at: null, seller_confirmed_at: null });
+
+    await confirmDelivery(orderId, buyer, { rating: 2, comment: "Late" });
+    expect(await findOrderById(orderId)).toMatchObject({ review_rating: 2, buyer_review_rating: null });
+    await confirmDelivery(orderId, seller, { rating: 4 });
+    expect(await findOrderById(orderId)).toMatchObject({ status: "completed", review_rating: 2, buyer_review_rating: 4 });
+
+    const { rows } = await pool.query("SELECT comment FROM seller_reviews WHERE order_id = $1", [orderId]);
+    expect(rows).toEqual([{ comment: "Late" }]);
+  });
+
   it("refuses a second confirmation from the same side", async () => {
     const orderId = await agreedOrder();
-    await confirmDelivery(orderId, buyer);
-    expect(await confirmDelivery(orderId, buyer)).toMatchObject({ ok: false, status: 409 });
+    await confirmDelivery(orderId, buyer, rated);
+    expect(await confirmDelivery(orderId, buyer, rated)).toMatchObject({ ok: false, status: 409 });
   });
 
   it("releases the payment exactly once when both sides confirm at the same time", async () => {
     const orderId = await agreedOrder();
-    await Promise.all([confirmDelivery(orderId, buyer), confirmDelivery(orderId, seller)]);
+    await Promise.all([confirmDelivery(orderId, buyer, rated), confirmDelivery(orderId, seller, rated)]);
     expect(await ledger(seller)).toEqual([{ type: "sale", amount: 100 }]);
     expect((await findOrderById(orderId))?.status).toBe("completed");
   });
@@ -235,8 +261,10 @@ describe("confirmDelivery", () => {
     const result = await checkoutListingTx({ listingId, buyerId: buyer });
     const orderId = (result as { orderId: string }).orderId;
 
+    // Store orders don't need a rating to confirm.
     expect(await confirmDelivery(orderId, admin)).toMatchObject({ ok: true, value: { completed: true, releasedAmount: 0 } });
     expect(await ledger(admin)).toEqual([]);
+    expect(await findOrderById(orderId)).toMatchObject({ review_rating: null, buyer_review_rating: null });
   });
 });
 
@@ -268,7 +296,7 @@ describe("cancelOrder", () => {
 
   it("can't cancel after a handoff confirmation", async () => {
     const orderId = await agreedOrder();
-    await confirmDelivery(orderId, buyer);
+    await confirmDelivery(orderId, buyer, rated);
     expect(await cancelOrder(orderId, seller)).toMatchObject({ ok: false, status: 409 });
   });
 
@@ -290,13 +318,11 @@ describe("cancelOrder", () => {
 
 describe("reviewOrder", () => {
   it("lets the buyer rate a completed order once", async () => {
-    const orderId = await agreedOrder();
+    const open = await agreedOrder();
+    expect(await reviewOrder({ orderId: open, userId: buyer, rating: 5 })).toMatchObject({ ok: false, status: 409 });
+
+    const orderId = await unratedCompletedOrder();
     const input = { orderId, userId: buyer, rating: 5 };
-
-    expect(await reviewOrder(input)).toMatchObject({ ok: false, status: 409 });
-
-    await confirmDelivery(orderId, buyer);
-    await confirmDelivery(orderId, seller);
     expect(await reviewOrder({ ...input, userId: seller })).toMatchObject({ ok: false, status: 403 });
     expect(await reviewOrder(input)).toEqual({ ok: true });
     expect(await reviewOrder(input)).toMatchObject({ ok: false, status: 409, reason: "already_rated" });
@@ -306,13 +332,15 @@ describe("reviewOrder", () => {
 
 describe("reviewBuyer", () => {
   it("lets the seller rate the buyer of a completed order once", async () => {
-    const orderId = await agreedOrder();
+    const open = await agreedOrder();
+    expect(await reviewBuyer({ orderId: open, userId: seller, rating: 4 })).toMatchObject({
+      ok: false,
+      status: 409,
+      reason: "rate_buyer_after_delivery",
+    });
+
+    const orderId = await unratedCompletedOrder();
     const input = { orderId, userId: seller, rating: 4, comment: "On time" };
-
-    expect(await reviewBuyer(input)).toMatchObject({ ok: false, status: 409, reason: "rate_buyer_after_delivery" });
-
-    await confirmDelivery(orderId, buyer);
-    await confirmDelivery(orderId, seller);
     expect(await reviewBuyer({ ...input, userId: buyer })).toMatchObject({ ok: false, status: 403, reason: "only_seller_can_rate_buyer" });
     expect(await reviewBuyer(input)).toEqual({ ok: true });
     expect(await reviewBuyer(input)).toMatchObject({ ok: false, status: 409, reason: "already_rated" });
@@ -330,10 +358,8 @@ describe("reviewBuyer", () => {
 
   it("keeps each side's rating of the same order separate", async () => {
     const orderId = await agreedOrder();
-    await confirmDelivery(orderId, buyer);
-    await confirmDelivery(orderId, seller);
-    expect(await reviewOrder({ orderId, userId: buyer, rating: 2 })).toEqual({ ok: true });
-    expect(await reviewBuyer({ orderId, userId: seller, rating: 5 })).toEqual({ ok: true });
+    await confirmDelivery(orderId, buyer, { rating: 2 });
+    await confirmDelivery(orderId, seller, { rating: 5 });
 
     const order = await findOrderById(orderId);
     expect(order?.review_rating).toBe(2);
@@ -353,11 +379,10 @@ describe("reviewBuyer", () => {
 
   it("only counts ratings of the order's own buyer in their reputation", async () => {
     const other = await insertUser({ name: "Carla" });
-    const rated = await buy(await insertListing(seller), { buyerId: other });
-    expect((await acceptMeetup(rated, seller)).ok).toBe(true);
-    await confirmDelivery(rated, other);
-    await confirmDelivery(rated, seller);
-    expect(await reviewBuyer({ orderId: rated, userId: seller, rating: 1 })).toEqual({ ok: true });
+    const othersOrder = await buy(await insertListing(seller), { buyerId: other });
+    expect((await acceptMeetup(othersOrder, seller)).ok).toBe(true);
+    await confirmDelivery(othersOrder, other, rated);
+    await confirmDelivery(othersOrder, seller, { rating: 1 });
 
     const mine = await findOrderById(await buy(await insertListing(seller)));
     expect(mine?.buyer_rating).toBeNull();
@@ -367,9 +392,8 @@ describe("reviewBuyer", () => {
   it("shows the buyer's reputation from past orders on their next order", async () => {
     for (const rating of [5, 2]) {
       const orderId = await agreedOrder();
-      await confirmDelivery(orderId, buyer);
-      await confirmDelivery(orderId, seller);
-      expect(await reviewBuyer({ orderId, userId: seller, rating })).toEqual({ ok: true });
+      await confirmDelivery(orderId, buyer, rated);
+      await confirmDelivery(orderId, seller, { rating });
     }
 
     const next = await findOrderById(await buy(await insertListing(seller)));

@@ -74,6 +74,8 @@ export const errorMessages = {
   already_rated: "You already rated this order",
   only_seller_can_rate_buyer: "Only the seller can rate this buyer",
   rate_buyer_after_delivery: "You can rate the buyer once the order is delivered",
+  rate_seller_to_confirm: "Rate the seller to confirm the handoff",
+  rate_buyer_to_confirm: "Rate the buyer to confirm the handoff",
 
   // wallet and notifications
   insufficient_credits: "You don't have enough credits for this withdrawal",

@@ -134,7 +134,9 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, crea
 -- (title/body keep an English copy for rows created before this column).
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS params JSONB;
 
--- One rating per order, left by the buyer once the order is completed.
+-- One rating per order, left by the buyer. Mandatory on community sales,
+-- where it comes with the buyer's handoff confirmation; optional on store
+-- orders, once they're completed.
 CREATE TABLE IF NOT EXISTS seller_reviews (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id          UUID NOT NULL UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
@@ -147,8 +149,8 @@ CREATE TABLE IF NOT EXISTS seller_reviews (
 
 CREATE INDEX IF NOT EXISTS idx_seller_reviews_seller ON seller_reviews(seller_id);
 
--- The other direction: one rating per order, left by the seller once the
--- order is completed. Shown to sellers as the buyer's reputation on new orders.
+-- The other direction: one rating per order, left by the seller (with the
+-- seller's handoff confirmation on community sales). Shown to sellers as the buyer's reputation on new orders.
 CREATE TABLE IF NOT EXISTS buyer_reviews (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id          UUID NOT NULL UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
