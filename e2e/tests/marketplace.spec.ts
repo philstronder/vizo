@@ -135,4 +135,67 @@ test.describe("marketplace", () => {
     ).toBeVisible();
     await expect(page.getByText("$65").first()).toBeVisible();
   });
+
+  test("a neighbor narrows the feed with a min and max price", async ({
+    page,
+    playwright,
+  }) => {
+    // A fresh building, so the feed holds only these listings.
+    const sellerApi = await playwright.request.newContext();
+    const seller = await registerResident(sellerApi);
+    const [paperback, lamp, sofa, apartment] = await Promise.all([
+      createListing(sellerApi, { title: unique("Paperback"), price: 8 }),
+      createListing(sellerApi, {
+        title: unique("Lamp"),
+        type: "auction",
+        startingPrice: 120,
+      }),
+      createListing(sellerApi, { title: unique("Sofa"), price: 900 }),
+      createListing(sellerApi, { title: unique("Apartment"), price: 450000 }),
+    ]);
+    const neighbor = await registerResident(sellerApi, {
+      buildingName: seller.buildingName,
+    });
+    await sellerApi.dispose();
+
+    const all = [paperback, lamp, sofa, apartment];
+    const expectShown = async (shown: typeof all) => {
+      for (const l of all) {
+        await expect(page.getByText(l.title, { exact: true })).toHaveCount(
+          shown.includes(l) ? 1 : 0,
+        );
+      }
+    };
+    const min = page.getByRole("spinbutton", { name: "Minimum price" });
+    const max = page.getByRole("spinbutton", { name: "Maximum price" });
+
+    await signIn(page, neighbor);
+    await page.goto("/");
+    await expect(page.getByRole("slider")).toHaveCount(0);
+    await expectShown(all);
+
+    // Minimum only: no upper bound.
+    await min.fill("120");
+    await expectShown([lamp, sofa, apartment]);
+
+    // Both, inclusive at the edges.
+    await max.fill("900");
+    await expectShown([lamp, sofa]);
+
+    // Maximum only.
+    await min.clear();
+    await max.fill("100");
+    await expectShown([paperback]);
+
+    // Nothing in range.
+    await min.fill("1000");
+    await max.fill("2000");
+    await expect(page.getByText("No listings match your filters")).toBeVisible();
+    await expectShown([]);
+
+    // Clearing both brings everything back.
+    await min.clear();
+    await max.clear();
+    await expectShown(all);
+  });
 });
