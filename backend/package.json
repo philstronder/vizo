@@ -19,7 +19,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "description": "VIZO REST API — Express + PostgreSQL",
   "dependencies": {
     "bcryptjs": "^3.0.3",

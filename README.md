@@ -156,3 +156,7 @@ codes always point at the public site, even when generated from another host.
 
 See `backend/docs/aws-rds-setup.md` for setting up the Postgres database on
 Amazon RDS, plus notes on hosting the backend and frontend.
+
+## License
+
+Released under the [MIT License](LICENSE).

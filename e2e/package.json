@@ -1,6 +1,7 @@
 {
   "name": "vizo-e2e",
   "private": true,
+  "license": "MIT",
   "description": "End-to-end tests: real browser, frontend, backend and Postgres",
   "scripts": {
     "test": "playwright test",
