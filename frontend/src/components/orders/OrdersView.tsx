@@ -13,7 +13,7 @@ import { Card, CardBody } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { StarRating } from "@/components/ui/StarRating";
-import { RateSellerModal } from "./RateSellerModal";
+import { RateOrderModal } from "./RateOrderModal";
 import { OrderHandoff } from "./OrderHandoff";
 import { OrderChat } from "./OrderChat";
 import { PlaceholderImage } from "@/components/listings/PlaceholderImage";
@@ -35,10 +35,14 @@ import {
   Tag,
   Wallet,
   CircleX,
+  ShieldCheck,
+  ShieldQuestionMark,
+  ShieldX,
   MessageCircle,
 } from "lucide-react";
 import { formatAddress } from "@/components/account/DeliveryAddressFields";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useI18n } from "@/i18n/I18nProvider";
 import { errorMessage } from "@/lib/error-message";
 
@@ -62,30 +66,66 @@ const notificationIcon: Record<NotificationType, React.ComponentType<{ size?: nu
   delivery_confirmed: Handshake,
   payment_released: Wallet,
   order_cancelled: CircleX,
+  residency_submitted: ShieldQuestionMark,
+  residency_approved: ShieldCheck,
+  residency_rejected: ShieldX,
 };
 
 const openStatuses: OrderStatus[] = ["pending_pickup", "ready_for_pickup", "shipped"];
+
+// What other sellers said about this buyer, so the seller can decide whether
+// to go ahead with the handoff.
+function BuyerReputation({ order }: { order: Order }) {
+  const { t } = useI18n();
+  return (
+    <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-400" aria-label={t.orders.buyerReputation}>
+      <StarRating value={order.buyerRating ?? 0} size={12} />
+      {order.buyerReviewCount ? (
+        <>
+          <span className="font-semibold text-ink">{order.buyerRating!.toFixed(1)}</span>
+          <span>{t.detail.ratingCount(order.buyerReviewCount)}</span>
+        </>
+      ) : (
+        <span>{t.detail.noRatings}</span>
+      )}
+    </p>
+  );
+}
 
 function OrderRow({
   order,
   role,
   onUpdated,
-  initialChatOpen = false,
+  chatRequested = false,
+  rateRequested = false,
 }: {
   order: Order;
   role: "buyer" | "seller";
   onUpdated: (order: Order) => void;
-  initialChatOpen?: boolean;
+  // A notification link asked to open this order's chat or rating form.
+  chatRequested?: boolean;
+  rateRequested?: boolean;
 }) {
   const { locale, t } = useI18n();
-  const [chatOpen, setChatOpen] = useState(initialChatOpen);
+  const [chatOpen, setChatOpen] = useState(chatRequested);
+  const [rateOpen, setRateOpen] = useState(rateRequested);
+  // Links clicked while already on /orders don't remount the page, so open
+  // again whenever a request for this order comes in.
+  const [requested, setRequested] = useState({ chat: chatRequested, rate: rateRequested });
+  if (requested.chat !== chatRequested || requested.rate !== rateRequested) {
+    setRequested({ chat: chatRequested, rate: rateRequested });
+    if (chatRequested && !requested.chat) setChatOpen(true);
+    if (rateRequested && !requested.rate) setRateOpen(true);
+  }
   const unread = order.unreadMessages ?? 0;
   const markChatRead = useCallback(() => {
     if (unread > 0) onUpdated({ ...order, unreadMessages: 0 });
   }, [order, unread, onUpdated]);
   const [completing, setCompleting] = useState(false);
-  const [rateOpen, setRateOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The rating this side gave the other once the order completed.
+  const givenRating = role === "buyer" ? order.reviewRating : order.buyerReviewRating;
+  const otherName = role === "buyer" ? order.sellerName : order.buyerName;
 
   async function handleComplete() {
     setCompleting(true);
@@ -110,6 +150,7 @@ function OrderRow({
               {role === "buyer" ? t.common.sellerName(order.sellerName) : t.common.buyerName(order.buyerName)}{" "}
               &middot; {formatDate(order.createdAt, locale)}
             </p>
+            {role === "seller" && <BuyerReputation order={order} />}
           </div>
         </Link>
         <div className="text-right">
@@ -141,18 +182,24 @@ function OrderRow({
         </p>
       )}
       {!order.isStoreOrder && <OrderHandoff order={order} role={role} onUpdated={onUpdated} />}
-      {role === "buyer" && order.status === "completed" && (
+      {order.status === "completed" && (
         <div className="mt-2 flex items-center justify-end gap-2">
-          {order.reviewRating ? (
+          {givenRating ? (
             <p className="flex items-center gap-1.5 text-xs text-ink-400">
-              {t.orders.youRated(order.sellerName)} <StarRating value={order.reviewRating} size={13} />
+              {t.orders.youRated(otherName)} <StarRating value={givenRating} size={13} />
             </p>
           ) : (
             <>
               <Button variant="secondary" size="sm" onClick={() => setRateOpen(true)}>
-                <Star size={14} /> {t.orders.rateSeller}
+                <Star size={14} /> {role === "buyer" ? t.orders.rateSeller : t.orders.rateBuyer}
               </Button>
-              <RateSellerModal order={order} open={rateOpen} onClose={() => setRateOpen(false)} onRated={onUpdated} />
+              <RateOrderModal
+                order={order}
+                target={role === "buyer" ? "seller" : "buyer"}
+                open={rateOpen}
+                onClose={() => setRateOpen(false)}
+                onRated={onUpdated}
+              />
             </>
           )}
         </div>
@@ -214,10 +261,11 @@ export function OrdersView() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  // Message notifications link to /orders?chat=<orderId> to open that chat.
-  const [chatOrderId] = useState(() =>
-    typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("chat"),
-  );
+  // Message notifications link to /orders?chat=<orderId> to open that chat,
+  // and completed-order notifications to /orders?rate=<orderId> to rate it.
+  const searchParams = useSearchParams();
+  const chatOrderId = searchParams.get("chat");
+  const rateOrderId = searchParams.get("rate");
 
   const load = useCallback(() => {
     return Promise.all([fetchMyOrders(), fetchNotifications()]).then(([ordersData, notificationsData]) => {
@@ -267,7 +315,14 @@ export function OrdersView() {
               ) : (
                 <div className="divide-y divide-line">
                   {purchases.map((o) => (
-                    <OrderRow key={o.id} order={o} role="buyer" onUpdated={handleOrderUpdated} initialChatOpen={o.id === chatOrderId} />
+                    <OrderRow
+                      key={o.id}
+                      order={o}
+                      role="buyer"
+                      onUpdated={handleOrderUpdated}
+                      chatRequested={o.id === chatOrderId}
+                      rateRequested={o.id === rateOrderId}
+                    />
                   ))}
                 </div>
               )}
@@ -285,7 +340,14 @@ export function OrdersView() {
               ) : (
                 <div className="divide-y divide-line">
                   {sales.map((o) => (
-                    <OrderRow key={o.id} order={o} role="seller" onUpdated={handleOrderUpdated} initialChatOpen={o.id === chatOrderId} />
+                    <OrderRow
+                      key={o.id}
+                      order={o}
+                      role="seller"
+                      onUpdated={handleOrderUpdated}
+                      chatRequested={o.id === chatOrderId}
+                      rateRequested={o.id === rateOrderId}
+                    />
                   ))}
                 </div>
               )}

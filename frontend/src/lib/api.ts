@@ -67,8 +67,31 @@ export interface AuthUser {
   phone?: string;
   deliveryAddress?: DeliveryAddress;
   verified: boolean;
+  // Residents stay "pending" until a building admin reviews their proof of
+  // residency, and can't use their community until it's "approved".
+  verificationStatus: VerificationStatus;
+  verificationRejectionReason?: string;
   isAdmin: boolean;
   memberSince: string;
+  // Condominiums whose residents this user reviews. Only on the signed-in user.
+  buildingAdminOf?: CondominiumRef[];
+}
+
+export type VerificationStatus = "approved" | "pending" | "rejected";
+
+export interface CondominiumRef {
+  id: string;
+  name: string;
+}
+
+// Residents with a building whose proof of residency isn't approved yet.
+export function awaitingResidencyReview(user: AuthUser): boolean {
+  return !!user.buildingName && user.verificationStatus !== "approved";
+}
+
+// Platform admins review every building; building admins their own.
+export function reviewsResidency(user: AuthUser): boolean {
+  return user.isAdmin || (user.buildingAdminOf?.length ?? 0) > 0;
 }
 
 export async function login(
@@ -95,6 +118,7 @@ export type RegisterPayload = {
       // Either a condominium from the list, or one to add to it.
       buildingName?: string;
       newCondominium?: NewCondominium;
+      proofPhoto: string; // image data URL, reviewed by a building admin
     }
   | { accountType: "viewer"; phone: string; deliveryAddress: DeliveryAddress }
 );
@@ -127,6 +151,8 @@ export interface UpdateProfilePayload {
   buildingBlock?: string; // "" clears it
   phone?: string;
   deliveryAddress?: DeliveryAddress;
+  // Required when joining or moving to another building.
+  proofPhoto?: string;
 }
 
 export async function updateProfile(
@@ -135,6 +161,14 @@ export async function updateProfile(
   return request("/api/auth/me", {
     method: "PATCH",
     body: JSON.stringify(payload),
+  });
+}
+
+// A new proof of residency after a rejection (or replacing the pending one).
+export async function resubmitResidencyProof(proofPhoto: string): Promise<AuthUser> {
+  return request("/api/auth/me/residency-proof", {
+    method: "PUT",
+    body: JSON.stringify({ proofPhoto }),
   });
 }
 
@@ -287,6 +321,55 @@ export async function removeAdmin(userId: string): Promise<void> {
   await request(`/api/admins/${userId}`, { method: "DELETE" });
 }
 
+// ---- building admins and residency review ---------------------------------
+
+export interface BuildingAdmin {
+  user: { id: string; name: string; email: string };
+  condominium: CondominiumRef;
+  since: string;
+}
+
+export async function fetchBuildingAdmins(): Promise<BuildingAdmin[]> {
+  return request("/api/building-admins");
+}
+
+export async function addBuildingAdmin(email: string, condominiumId: string): Promise<BuildingAdmin> {
+  return request("/api/building-admins", {
+    method: "POST",
+    body: JSON.stringify({ email, condominiumId }),
+  });
+}
+
+export async function removeBuildingAdmin(condominiumId: string, userId: string): Promise<void> {
+  await request(`/api/building-admins/${condominiumId}/${userId}`, { method: "DELETE" });
+}
+
+export interface ResidencyRequest {
+  userId: string;
+  name: string;
+  email: string;
+  buildingName: string;
+  buildingBlock?: string;
+  unitNumber?: string;
+  proofPhoto?: string;
+  submittedAt: string;
+}
+
+export async function fetchResidencyRequests(): Promise<ResidencyRequest[]> {
+  return request("/api/residency-requests");
+}
+
+export async function approveResidency(userId: string): Promise<void> {
+  await request(`/api/residency-requests/${userId}/approve`, { method: "POST" });
+}
+
+export async function rejectResidency(userId: string, reason?: string): Promise<void> {
+  await request(`/api/residency-requests/${userId}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
 // ---- condominiums ---------------------------------------------------------
 
 export interface Condominium {
@@ -381,6 +464,16 @@ export async function reviewOrder(
   payload: { rating: number; comment?: string },
 ): Promise<Order> {
   return request(`/api/orders/${id}/review`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function reviewBuyer(
+  id: string,
+  payload: { rating: number; comment?: string },
+): Promise<Order> {
+  return request(`/api/orders/${id}/buyer-review`, {
     method: "POST",
     body: JSON.stringify(payload),
   });

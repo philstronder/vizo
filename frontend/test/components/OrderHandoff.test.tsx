@@ -10,6 +10,7 @@ import {
   proposeMeetup,
 } from "@/lib/api";
 import type { Order } from "@/types";
+import { makeOrder } from "../order-fixture";
 import { renderWithProviders } from "../render";
 
 vi.mock("@/lib/api", async (importOriginal) => ({
@@ -19,32 +20,6 @@ vi.mock("@/lib/api", async (importOriginal) => ({
   completeOrder: vi.fn(),
   proposeMeetup: vi.fn(),
 }));
-
-function makeOrder(overrides: Partial<Order> = {}): Order {
-  return {
-    id: "o1",
-    listingId: "l1",
-    listingTitle: "Bike",
-    listingImage: "l1",
-    buyerId: "b",
-    buyerName: "Ana",
-    sellerId: "s",
-    sellerName: "Bruno",
-    price: 100,
-    fees: 0,
-    status: "pending_pickup",
-    createdAt: "2026-11-01T12:00:00.000Z",
-    isStoreOrder: false,
-    paymentStatus: "held",
-    paidWithCredits: 0,
-    meetupAt: "2026-11-20T18:30:00.000Z",
-    meetupProposedBy: "buyer",
-    meetupConfirmed: false,
-    buyerConfirmedDelivery: false,
-    sellerConfirmedDelivery: false,
-    ...overrides,
-  };
-}
 
 function renderHandoff(order: Order, role: "buyer" | "seller") {
   const onUpdated = vi.fn();

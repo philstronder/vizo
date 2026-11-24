@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { deleteListing, fetchListings } from "@/lib/api";
+import { awaitingResidencyReview, deleteListing, fetchListings } from "@/lib/api";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -10,7 +10,7 @@ import { Card, CardBody } from "@/components/ui/Card";
 import { PlaceholderImage } from "@/components/listings/PlaceholderImage";
 import { EditProfileModal } from "./EditProfileModal";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { BadgeCheck, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import { BadgeCheck, Clock, MapPin, Pencil, Plus, ShieldX, Trash2 } from "lucide-react";
 import { formatAddress } from "@/components/account/DeliveryAddressFields";
 import Link from "next/link";
 import type { Listing } from "@/types";
@@ -31,14 +31,16 @@ export function ProfileView() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   // TV store viewer accounts have no building, so no community listings either.
   const isViewer = !!user && !user.buildingName;
+  // Their community (and so their listings) opens once residency is approved.
+  const awaitingReview = !!user && awaitingResidencyReview(user);
 
   const load = useCallback(() => {
-    if (!user || isViewer) return Promise.resolve();
+    if (!user || isViewer || awaitingReview) return Promise.resolve();
     return fetchListings({ sellerId: user.id }).then((rows) => {
       setMyListings(rows.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       setLoading(false);
     });
-  }, [user, isViewer]);
+  }, [user, isViewer, awaitingReview]);
 
   useEffect(() => {
     load();
@@ -63,7 +65,32 @@ export function ProfileView() {
               {user.verified && <BadgeCheck size={17} className="text-info" />}
             </p>
             <p className="text-sm text-ink-400">
-              {isViewer ? (
+              {awaitingReview ? (
+        <Card>
+          <CardBody className="flex items-start gap-3">
+            {user.verificationStatus === "rejected" ? (
+              <ShieldX size={20} className="mt-0.5 shrink-0 text-danger" />
+            ) : (
+              <Clock size={20} className="mt-0.5 shrink-0 text-amber-600" />
+            )}
+            <div>
+              <p className="font-bold text-ink">
+                {user.verificationStatus === "rejected" ? t.residency.rejectedTitle : t.residency.pendingTitle}
+              </p>
+              <p className="text-sm text-ink-400">
+                {user.verificationStatus === "rejected"
+                  ? t.residency.rejectedHint(user.buildingName ?? "")
+                  : t.residency.pendingHint(user.buildingName ?? "")}
+              </p>
+              {user.verificationStatus === "rejected" && (
+                <Button href="/" size="sm" className="mt-3">
+                  {t.residency.sendNewPhoto}
+                </Button>
+              )}
+            </div>
+          </CardBody>
+        </Card>
+      ) : isViewer ? (
                 <>{user.phone && <>{user.phone} &middot; </>}</>
               ) : (
                 <>

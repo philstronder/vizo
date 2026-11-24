@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { expectSignedOut, field, PASSWORD, registerResident, unique } from "./helpers";
+import { expectSignedOut, field, PASSWORD, PROOF_PNG, registerResident, unique } from "./helpers";
 
 test.describe("authentication", () => {
-  test("a resident signs up through the form and lands on their building's feed", async ({ page, request }) => {
+  test("a resident signs up through the form and waits for their residency to be reviewed", async ({ page, request }) => {
     // An existing neighbor puts the condominium on the list to pick from.
     const neighbor = await registerResident(request);
     const name = unique("New Resident");
@@ -23,14 +23,16 @@ test.describe("authentication", () => {
     await page.locator('input[type="file"]').setInputFiles({
       name: "utility-bill.png",
       mimeType: "image/png",
-      buffer: Buffer.from("fake image"),
+      buffer: PROOF_PNG,
     });
     await expect(page.getByText("utility-bill.png uploaded")).toBeVisible();
+    await expect(page.getByAltText("Proof of residency")).toBeVisible();
     await submit.click();
 
+    // The community stays closed until a building admin approves the proof.
     await expect(page).toHaveURL("/");
-    await expect(page.getByRole("heading", { name: "Marketplace Feed" })).toBeVisible();
-    await expect(page.getByText(`${neighbor.buildingName} Marketplace`)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Your residency is being reviewed" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Marketplace Feed" })).toHaveCount(0);
   });
 
   test("signing in, out, and rejecting a wrong password", async ({ page, request }) => {

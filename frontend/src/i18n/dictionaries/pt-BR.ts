@@ -88,6 +88,7 @@ export const ptBR: Dictionary = {
     stores: "Lojas",
     condominiums: "Condomínios",
     admins: "Admins",
+    verifications: "Verificações",
   },
 
   auth: {
@@ -338,6 +339,8 @@ export const ptBR: Dictionary = {
     caughtUp: "Você está em dia.",
     youRated: (name) => `Você avaliou ${name}`,
     rateSeller: "Avaliar vendedor",
+    rateBuyer: "Avaliar comprador",
+    buyerReputation: "Reputação do comprador",
     markDelivered: "Marcar como entregue",
     updateError: "Não foi possível atualizar o pedido",
     payment: {
@@ -464,6 +467,64 @@ export const ptBR: Dictionary = {
     you: "Você",
   },
 
+  buildingAdmins: {
+    title: "Administradores de condomínio",
+    subtitle:
+      "Administradores de condomínio analisam o comprovante de residência de quem se cadastra no condomínio. Pedidos de condomínios sem administrador vão para os administradores da plataforma.",
+    condominium: "Condomínio",
+    email: "E-mail do administrador do condomínio",
+    add: "Adicionar administrador",
+    addError: "Não foi possível adicionar o administrador do condomínio",
+    removeError: "Não foi possível remover o administrador do condomínio",
+    confirmRemove: (name, condominium) =>
+      `Remover ${name} como administrador de ${condominium}?`,
+    removeFrom: (name, condominium) => `Remover ${name} de ${condominium}`,
+    empty: "Nenhum administrador de condomínio ainda.",
+  },
+
+  residency: {
+    pendingTitle: "Sua residência está em análise",
+    pendingHint: (building) =>
+      `Um administrador do ${building} está conferindo seu comprovante de residência. Você vai receber uma notificação quando for aprovado e então poderá comprar e vender com seus vizinhos.`,
+    rejectedTitle: "Seu comprovante de residência não foi aprovado",
+    rejectedHint: (building) =>
+      `Envie uma nova foto de um documento que mostre que você mora no ${building}.`,
+    reason: (reason) => `Motivo: ${reason}`,
+    sendNewPhoto: "Enviar nova foto",
+    sending: "Enviando...",
+    resubmitError: "Não foi possível enviar a foto",
+    proofAlt: "Comprovante de residência",
+    unreadablePhoto: "Não foi possível ler esta imagem. Tente outra foto.",
+    changingBuildingHint:
+      "Mudou de condomínio? O administrador dele precisa aprovar um novo comprovante de residência antes.",
+  },
+
+  verifications: {
+    title: "Verificações de residência",
+    subtitleFor: (buildings) =>
+      `Pessoas que querem entrar em ${buildings}. Confira se o documento mostra o nome delas e um endereço no condomínio.`,
+    subtitleAll:
+      "Pessoas aguardando a aprovação do comprovante de residência, em todos os condomínios.",
+    loading: "Carregando pedidos...",
+    loadError: "Não foi possível carregar os pedidos",
+    emptyTitle: "Tudo em dia",
+    emptyHint: "Nenhum comprovante de residência aguardando análise.",
+    building: "Condomínio",
+    unit: "Unidade",
+    block: (block) => `Bloco ${block}`,
+    sent: "Enviado em",
+    noPhoto: "Sem foto",
+    openPhoto: "Ampliar foto",
+    proofOf: (name) => `Comprovante de residência de ${name}`,
+    approve: "Aprovar",
+    reject: "Recusar",
+    reason: "Motivo (mostrado ao morador)",
+    reasonPlaceholder: "Ex.: o endereço da conta é de outro condomínio",
+    confirmReject: "Recusar pedido",
+    cancel: "Cancelar",
+    reviewError: "Não foi possível salvar sua decisão",
+  },
+
   condominiumSearch: {
     noResults: "Nenhum condomínio encontrado",
     moreResults: (count) => `Mais ${count}. Continue digitando para filtrar.`,
@@ -539,6 +600,10 @@ export const ptBR: Dictionary = {
       `${name} confirmou a entrega. Confirme também para concluir o pedido.`,
     orderCompleted: (title) => `${title} entregue`,
     orderCompletedBody: (name) => `${name} marcou este pedido como entregue.`,
+    orderCompletedRateBuyer: (name) =>
+      `${name} confirmou a entrega. Avalie o comprador para que outros vendedores saibam como foi.`,
+    orderCompletedRateSeller: (name) =>
+      `${name} confirmou a entrega. Avalie o vendedor para que outros compradores saibam como foi.`,
     paymentReleased: "Pagamento liberado",
     paymentReleasedBody: (amount, title) =>
       `${amount} em créditos de ${title} foram adicionados à sua carteira.`,
@@ -552,6 +617,15 @@ export const ptBR: Dictionary = {
       `${name} cancelou o pedido. Seu item voltou à venda.`,
     orderCancelledBySeller: (name) =>
       `${name} cancelou o pedido. Seu pagamento foi reembolsado.`,
+    residencySubmitted: (name, building) => `${name} quer entrar no ${building}`,
+    residencySubmittedBody: "Analise o comprovante de residência.",
+    residencyApproved: (building) => `Bem-vindo ao ${building}`,
+    residencyApprovedBody:
+      "Seu comprovante de residência foi aprovado. Agora você pode comprar e vender com seus vizinhos.",
+    residencyRejected: "Comprovante de residência não aprovado",
+    residencyRejectedBody: "Envie uma nova foto para tentar de novo.",
+    residencyRejectedBodyReason: (reason) =>
+      `Motivo: ${reason}. Envie uma nova foto para tentar de novo.`,
   },
 
   errors: {
@@ -573,6 +647,14 @@ export const ptBR: Dictionary = {
     cep_invalid: "O CEP deve ter 8 dígitos.",
     cep_unavailable: "A consulta de CEP está indisponível.",
     cep_not_found: "CEP não encontrado.",
+    residency_not_verified: "Seu comprovante de residência ainda não foi aprovado.",
+    residency_proof_required: "Envie uma foto que comprove que você mora neste condomínio.",
+    residency_already_verified: "Sua residência já está verificada.",
+    residency_reviewers_only: "Só administradores de condomínio podem analisar comprovantes de residência.",
+    residency_request_not_found: "Este pedido já foi analisado ou não existe.",
+    cannot_review_own_residency: "Você não pode analisar seu próprio comprovante de residência.",
+    building_admin_email_not_found: "Nenhuma conta com este e-mail. Peça para a pessoa se cadastrar primeiro.",
+    building_admin_not_found: "Esta pessoa não é administradora deste condomínio.",
     listing_not_found: "Anúncio não encontrado.",
     listing_not_found_or_not_owner: "Anúncio não encontrado, ou ele não é seu.",
     sign_in_to_see_listings: "Entre na sua conta para ver os anúncios do seu condomínio.",
@@ -607,6 +689,8 @@ export const ptBR: Dictionary = {
     only_buyer_can_rate: "Apenas o comprador pode avaliar este vendedor.",
     rate_after_delivery: "Você pode avaliar o vendedor depois que o pedido for entregue.",
     already_rated: "Você já avaliou este pedido.",
+    only_seller_can_rate_buyer: "Apenas o vendedor pode avaliar este comprador.",
+    rate_buyer_after_delivery: "Você pode avaliar o comprador depois que o pedido for entregue.",
     insufficient_credits: "Você não tem créditos suficientes para este saque.",
     notification_not_found: "Notificação não encontrada.",
   },
@@ -614,9 +698,11 @@ export const ptBR: Dictionary = {
   rate: {
     title: (name) => `Avaliar ${name}`,
     howDidItGo: (title) => `Como foi a compra de “${title}”?`,
+    howDidSellingGo: (title) => `Como foi a venda de “${title}”?`,
     labels: ["", "Ruim", "Regular", "Bom", "Muito bom", "Excelente"],
     comment: "Comentário (opcional)",
     commentPlaceholder: "O item era como descrito? A retirada foi fácil?",
+    buyerCommentPlaceholder: "O comprador foi pontual? A entrega foi tranquila?",
     pickRating: "Escolha uma nota de 1 a 5 estrelas",
     error: "Não foi possível salvar sua avaliação",
     submit: "Enviar avaliação",

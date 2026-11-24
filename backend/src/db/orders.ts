@@ -31,6 +31,9 @@ export interface OrderRow
   pickup_time: string | null;
   created_at: Date;
   review_rating: number | null;
+  buyer_review_rating: number | null;
+  buyer_rating: string | null; // avg() is numeric, read as text; null with no reviews
+  buyer_review_count: string;
   store_id: string | null;
   buyer_phone: string | null;
   payment_status: "held" | "released" | "refunded" | null;
@@ -55,6 +58,9 @@ const ORDER_SELECT = `
     buyer.name AS buyer_name,
     seller.name AS seller_name,
     r.rating AS review_rating,
+    br.rating AS buyer_review_rating,
+    (SELECT avg(x.rating) FROM buyer_reviews x WHERE x.buyer_id = o.buyer_id) AS buyer_rating,
+    (SELECT count(*) FROM buyer_reviews x WHERE x.buyer_id = o.buyer_id) AS buyer_review_count,
     l.store_id,
     buyer.phone AS buyer_phone,
     buyer.address_postal_code,
@@ -69,6 +75,7 @@ const ORDER_SELECT = `
   JOIN users buyer ON buyer.id = o.buyer_id
   JOIN users seller ON seller.id = o.seller_id
   LEFT JOIN seller_reviews r ON r.order_id = o.id
+  LEFT JOIN buyer_reviews br ON br.order_id = o.id
 `;
 
 // Store products are delivered, so their orders carry the buyer's phone and
@@ -90,6 +97,9 @@ export function toApiOrder(row: OrderRow) {
     pickupTime: row.pickup_time ?? undefined,
     createdAt: row.created_at.toISOString(),
     reviewRating: row.review_rating ?? undefined,
+    buyerReviewRating: row.buyer_review_rating ?? undefined,
+    buyerRating: row.buyer_rating !== null ? Number(row.buyer_rating) : undefined,
+    buyerReviewCount: Number(row.buyer_review_count),
     buyerPhone: row.store_id ? (row.buyer_phone ?? undefined) : undefined,
     deliveryAddress: row.store_id ? toDeliveryAddress(row) : undefined,
     isStoreOrder: !!row.store_id,
@@ -391,29 +401,47 @@ export async function cancelOrder(orderId: string, userId: string) {
   });
 }
 
-// Lets the buyer rate the seller once the order is completed. The UNIQUE
-// order_id constraint makes ON CONFLICT the one-review-per-order guard.
-export async function reviewOrder(input: {
-  orderId: string;
-  userId: string;
-  rating: number;
-  comment?: string;
-}): Promise<{ ok: true } | { ok: false; status: 403 | 404 | 409; reason: ErrorCode; params?: ErrorParams }> {
+type ReviewInput = { orderId: string; userId: string; rating: number; comment?: string };
+type ReviewResult = { ok: true } | { ok: false; status: 403 | 404 | 409; reason: ErrorCode; params?: ErrorParams };
+
+// Once an order is completed, the buyer rates the seller (seller_reviews) and
+// the seller rates the buyer (buyer_reviews). The UNIQUE order_id constraint
+// makes ON CONFLICT the one-review-per-order guard.
+async function insertReview(
+  input: ReviewInput,
+  side: { table: "seller_reviews" | "buyer_reviews"; author: "buyer_id" | "seller_id"; notAuthor: ErrorCode; notCompleted: ErrorCode }
+): Promise<ReviewResult> {
   const order = await findOrderById(input.orderId);
   if (!order) return { ok: false, status: 404, reason: "order_not_found" };
-  if (order.buyer_id !== input.userId) {
-    return { ok: false, status: 403, reason: "only_buyer_can_rate" };
-  }
-  if (order.status !== "completed") {
-    return { ok: false, status: 409, reason: "rate_after_delivery" };
-  }
+  if (order[side.author] !== input.userId) return { ok: false, status: 403, reason: side.notAuthor };
+  if (order.status !== "completed") return { ok: false, status: 409, reason: side.notCompleted };
 
   const { rowCount } = await pool.query(
-    `INSERT INTO seller_reviews (order_id, seller_id, buyer_id, rating, comment)
+    `INSERT INTO ${side.table} (order_id, seller_id, buyer_id, rating, comment)
      VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (order_id) DO NOTHING`,
     [order.id, order.seller_id, order.buyer_id, input.rating, input.comment ?? null]
   );
   if (!rowCount) return { ok: false, status: 409, reason: "already_rated" };
   return { ok: true };
+}
+
+// The buyer rates the seller.
+export function reviewOrder(input: ReviewInput): Promise<ReviewResult> {
+  return insertReview(input, {
+    table: "seller_reviews",
+    author: "buyer_id",
+    notAuthor: "only_buyer_can_rate",
+    notCompleted: "rate_after_delivery",
+  });
+}
+
+// The seller rates the buyer.
+export function reviewBuyer(input: ReviewInput): Promise<ReviewResult> {
+  return insertReview(input, {
+    table: "buyer_reviews",
+    author: "seller_id",
+    notAuthor: "only_seller_can_rate_buyer",
+    notCompleted: "rate_buyer_after_delivery",
+  });
 }

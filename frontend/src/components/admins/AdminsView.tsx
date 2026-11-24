@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Field";
 import { useI18n } from "@/i18n/I18nProvider";
 import { errorMessage } from "@/lib/error-message";
+import { BuildingAdminsSection } from "./BuildingAdminsSection";
 
 export function AdminsView() {
   const { locale, t } = useI18n();
@@ -104,6 +105,8 @@ export function AdminsView() {
           ))}
         </Card>
       )}
+
+      <BuildingAdminsSection />
     </div>
   );
 }

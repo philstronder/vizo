@@ -8,6 +8,7 @@ import {
   findOrderById,
   listOrdersForUser,
   proposeMeetup,
+  reviewBuyer,
   reviewOrder,
   toApiOrder,
   type OrderRow,
@@ -105,7 +106,7 @@ ordersRouter.patch("/:id/complete", requireAuth, async (req, res, next) => {
         href: "/orders",
         params: { listingTitle: order.listing_title, actorName },
       });
-    } else {
+    } else if (order.store_id) {
       await createNotification({
         userId: otherId,
         type: "order_completed",
@@ -113,6 +114,20 @@ ordersRouter.patch("/:id/complete", requireAuth, async (req, res, next) => {
         body: `${actorName} marked this order as delivered.`,
         href: "/orders",
         params: { listingTitle: order.listing_title, actorName },
+      });
+    } else {
+      // A community sale is done: ask the other side to rate whoever confirmed
+      // last. The link opens the rating form on the orders page.
+      const ratesBuyer = otherId === order.seller_id;
+      await createNotification({
+        userId: otherId,
+        type: "order_completed",
+        title: `${order.listing_title} delivered`,
+        body: ratesBuyer
+          ? `${actorName} confirmed the handoff. Rate the buyer so other sellers know how it went.`
+          : `${actorName} confirmed the handoff. Rate the seller so other buyers know how it went.`,
+        href: `/orders?rate=${order.id}`,
+        params: { listingTitle: order.listing_title, actorName, variant: ratesBuyer ? "rateBuyer" : "rateSeller" },
       });
     }
     if (value.releasedAmount > 0) {
@@ -201,25 +216,32 @@ const reviewSchema = z.object({
   comment: z.string().trim().max(1000).optional(),
 });
 
-ordersRouter.post("/:id/review", requireAuth, async (req, res, next) => {
-  try {
-    const orderId = req.params.id as string;
-    const input = reviewSchema.parse(req.body);
-    const result = await reviewOrder({
-      orderId,
-      userId: req.userId!,
-      rating: input.rating,
-      comment: input.comment || undefined,
-    });
-    if (!result.ok) throw new HttpError(result.status, result.reason, result.params);
+// POST /:id/review: the buyer rates the seller; /:id/buyer-review: the
+// seller rates the buyer.
+for (const [path, review] of [
+  ["/:id/review", reviewOrder],
+  ["/:id/buyer-review", reviewBuyer],
+] as const) {
+  ordersRouter.post(path, requireAuth, async (req, res, next) => {
+    try {
+      const orderId = req.params.id as string;
+      const input = reviewSchema.parse(req.body);
+      const result = await review({
+        orderId,
+        userId: req.userId!,
+        rating: input.rating,
+        comment: input.comment || undefined,
+      });
+      if (!result.ok) throw new HttpError(result.status, result.reason, result.params);
 
-    const order = await findOrderById(orderId);
-    if (!order) throw notFound("order_not_found");
-    res.status(201).json(toApiOrder(order));
-  } catch (err) {
-    next(err);
-  }
-});
+      const order = await findOrderById(orderId);
+      if (!order) throw notFound("order_not_found");
+      res.status(201).json(toApiOrder(order));
+    } catch (err) {
+      next(err);
+    }
+  });
+}
 
 // Loads an order for its chat, which only the buyer and the seller can see.
 async function findOrderForParticipant(orderId: string, userId: string) {

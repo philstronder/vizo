@@ -11,6 +11,7 @@ import {
   trimAddress,
 } from "@/components/account/DeliveryAddressFields";
 import { CondominiumSelect } from "@/components/account/CondominiumSelect";
+import { ProofOfResidencyField } from "@/components/account/ProofOfResidencyField";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/i18n/I18nProvider";
 import { errorMessage } from "@/lib/error-message";
@@ -24,6 +25,7 @@ export function EditProfileModal({ open, onClose }: { open: boolean; onClose: ()
   const [buildingBlock, setBuildingBlock] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState(EMPTY_ADDRESS);
+  const [proofPhoto, setProofPhoto] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   // TV store viewer accounts edit their delivery details, and may join a
@@ -43,16 +45,24 @@ export function EditProfileModal({ open, onClose }: { open: boolean; onClose: ()
       setBuildingBlock(user.buildingBlock ?? "");
       setPhone(user.phone ?? "");
       setAddress(user.deliveryAddress ?? EMPTY_ADDRESS);
+      setProofPhoto(null);
       setError(null);
     }
   }
 
   const joiningBuilding = isViewer && (buildingName.trim() !== "" || unitNumber.trim() !== "");
-  const canSubmit = isViewer
-    ? phone.trim().length >= 8 &&
-      isAddressComplete(address) &&
-      (!joiningBuilding || (buildingName.trim() !== "" && unitNumber.trim() !== ""))
-    : true;
+  // Joining or moving to another building needs a new proof of residency,
+  // reviewed by that building's admins. Matched like the server does.
+  const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const changingBuilding =
+    buildingName.trim() !== "" && !(user?.buildingName && sameName(user.buildingName, buildingName));
+  const canSubmit =
+    (isViewer
+      ? phone.trim().length >= 8 &&
+        isAddressComplete(address) &&
+        (!joiningBuilding || (buildingName.trim() !== "" && unitNumber.trim() !== ""))
+      : true) &&
+    (!changingBuilding || !!proofPhoto);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -69,12 +79,14 @@ export function EditProfileModal({ open, onClose }: { open: boolean; onClose: ()
               ...(joiningBuilding
                 ? { buildingName: buildingName.trim(), unitNumber: unitNumber.trim(), buildingBlock: buildingBlock.trim() }
                 : {}),
+              ...(changingBuilding && proofPhoto ? { proofPhoto } : {}),
             }
           : {
               name: name.trim(),
               buildingName: buildingName.trim(),
               unitNumber: unitNumber.trim(),
               buildingBlock: buildingBlock.trim(),
+              ...(changingBuilding && proofPhoto ? { proofPhoto } : {}),
             }
       );
       onClose();
@@ -131,6 +143,13 @@ export function EditProfileModal({ open, onClose }: { open: boolean; onClose: ()
                 <Input required value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} />
               </FieldGroup>
             </div>
+          </>
+        )}
+
+        {changingBuilding && (
+          <>
+            <p className="mt-2 text-xs text-ink-400">{t.residency.changingBuildingHint}</p>
+            <ProofOfResidencyField buildingName={buildingName.trim()} value={proofPhoto} onChange={setProofPhoto} />
           </>
         )}
 

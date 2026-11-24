@@ -117,6 +117,11 @@ export interface Order {
   pickupTime?: string;
   createdAt: string;
   reviewRating?: number; // the buyer's 1–5 rating of the seller, once given
+  buyerReviewRating?: number; // the seller's 1–5 rating of the buyer, once given
+  // The buyer's reputation: their average rating from sellers across all
+  // their orders; buyerRating is undefined until the first review.
+  buyerRating?: number;
+  buyerReviewCount: number;
   // Store orders are delivered: the buyer's phone and delivery address.
   buyerPhone?: string;
   deliveryAddress?: DeliveryAddress;
@@ -176,13 +181,18 @@ export type NotificationType =
   | "meetup_confirmed"
   | "delivery_confirmed"
   | "payment_released"
-  | "order_cancelled";
+  | "order_cancelled"
+  | "residency_submitted"
+  | "residency_approved"
+  | "residency_rejected";
 
 export interface NotificationParams {
   listingTitle?: string;
   actorName?: string;
   amount?: number;
   variant?: string;
+  buildingName?: string;
+  reason?: string; // why a proof of residency was rejected
 }
 
 export interface Notification {
@@ -226,6 +236,14 @@ export type ApiErrorCode =
   | "cep_invalid"
   | "cep_unavailable"
   | "cep_not_found"
+  | "residency_not_verified"
+  | "residency_proof_required"
+  | "residency_already_verified"
+  | "residency_reviewers_only"
+  | "residency_request_not_found"
+  | "cannot_review_own_residency"
+  | "building_admin_email_not_found"
+  | "building_admin_not_found"
   | "listing_not_found"
   | "listing_not_found_or_not_owner"
   | "sign_in_to_see_listings"
@@ -260,5 +278,7 @@ export type ApiErrorCode =
   | "only_buyer_can_rate"
   | "rate_after_delivery"
   | "already_rated"
+  | "only_seller_can_rate_buyer"
+  | "rate_buyer_after_delivery"
   | "insufficient_credits"
   | "notification_not_found";

@@ -8,6 +8,7 @@ import {
   confirmDelivery,
   findOrderById,
   proposeMeetup,
+  reviewBuyer,
   reviewOrder,
 } from "../../src/db/orders";
 import { findListingById, type ListingRow } from "../../src/db/listings";
@@ -27,6 +28,7 @@ vi.mock("../../src/db/orders", async (importOriginal) => ({
   acceptMeetup: vi.fn(),
   cancelOrder: vi.fn(),
   reviewOrder: vi.fn(),
+  reviewBuyer: vi.fn(),
 }));
 vi.mock("../../src/db/listings", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../src/db/listings")>()),
@@ -70,6 +72,8 @@ describe("auth", () => {
     ["patch", `/api/orders/${ORDER_ID}/complete`],
     ["post", `/api/orders/${ORDER_ID}/cancel`],
     ["get", `/api/orders/${ORDER_ID}/messages`],
+    ["post", `/api/orders/${ORDER_ID}/review`],
+    ["post", `/api/orders/${ORDER_ID}/buyer-review`],
   ] as const)("%s %s requires a session", async (method, path) => {
     expect((await request(app)[method](path)).status).toBe(401);
   });
@@ -144,10 +148,37 @@ describe("PATCH /api/orders/:id/complete", () => {
     ]);
   });
 
+  it("asks the side that didn't confirm last to rate the other", async () => {
+    vi.mocked(confirmDelivery).mockResolvedValue({ ok: true, order, value: { completed: true, releasedAmount: 0 } });
+    await complete(BUYER_ID);
+    expect(notifications()[0]).toMatchObject({
+      userId: SELLER_ID,
+      href: `/orders?rate=${ORDER_ID}`,
+      params: expect.objectContaining({ variant: "rateBuyer" }),
+    });
+
+    vi.mocked(createNotification).mockClear();
+    await complete(SELLER_ID);
+    expect(notifications()[0]).toMatchObject({
+      userId: BUYER_ID,
+      href: `/orders?rate=${ORDER_ID}`,
+      params: expect.objectContaining({ variant: "rateSeller" }),
+    });
+  });
+
   it("notifies the buyer when the seller confirms", async () => {
     vi.mocked(confirmDelivery).mockResolvedValue({ ok: true, order, value: { completed: false, releasedAmount: 0 } });
     await complete(SELLER_ID);
     expect(notifications()[0]).toMatchObject({ userId: BUYER_ID, body: expect.stringContaining("Bruno") });
+  });
+
+  it("keeps the plain delivered notification for store orders", async () => {
+    const storeOrder = makeOrderRow({ store_id: "store-1" });
+    vi.mocked(confirmDelivery).mockResolvedValue({ ok: true, order: storeOrder, value: { completed: true, releasedAmount: 0 } });
+    await complete(SELLER_ID);
+    expect(notifications()).toEqual([
+      expect.objectContaining({ userId: BUYER_ID, type: "order_completed", href: "/orders", params: { listingTitle: "Bike", actorName: "Bruno" } }),
+    ]);
   });
 
   it("passes on the status of a refused confirmation", async () => {
@@ -215,6 +246,54 @@ describe("POST /api/orders/:id/review", () => {
     const res = await review({ rating: 5, comment: "   " });
     expect(res.status).toBe(201);
     expect(vi.mocked(reviewOrder).mock.calls[0][0].comment).toBeUndefined();
+  });
+});
+
+describe("POST /api/orders/:id/buyer-review", () => {
+  it("records the seller's rating of the buyer and returns the order with it", async () => {
+    vi.mocked(reviewBuyer).mockResolvedValue({ ok: true });
+    vi.mocked(findOrderById).mockResolvedValue(
+      makeOrderRow({ status: "completed", buyer_review_rating: 4, buyer_rating: "4.5000", buyer_review_count: "2" })
+    );
+    const res = await request(app)
+      .post(`/api/orders/${ORDER_ID}/buyer-review`)
+      .set("Cookie", authCookie(SELLER_ID))
+      .send({ rating: 4, comment: "Punctual" });
+
+    expect(res.status).toBe(201);
+    expect(vi.mocked(reviewBuyer).mock.calls[0][0]).toMatchObject({ orderId: ORDER_ID, userId: SELLER_ID, rating: 4, comment: "Punctual" });
+    expect(reviewOrder).not.toHaveBeenCalled();
+    expect(res.body).toMatchObject({ buyerReviewRating: 4, buyerRating: 4.5, buyerReviewCount: 2 });
+  });
+
+  it.each([0, 6, 3.5, "5"])("rejects a rating of %s", async (rating) => {
+    const res = await request(app)
+      .post(`/api/orders/${ORDER_ID}/buyer-review`)
+      .set("Cookie", authCookie(SELLER_ID))
+      .send({ rating });
+    expect(res.status).toBe(400);
+    expect(reviewBuyer).not.toHaveBeenCalled();
+  });
+
+  it("rejects a comment over 1000 characters and drops an empty one", async () => {
+    const send = (comment: string) =>
+      request(app).post(`/api/orders/${ORDER_ID}/buyer-review`).set("Cookie", authCookie(SELLER_ID)).send({ rating: 3, comment });
+    expect((await send("x".repeat(1001))).status).toBe(400);
+    expect(reviewBuyer).not.toHaveBeenCalled();
+
+    vi.mocked(reviewBuyer).mockResolvedValue({ ok: true });
+    expect((await send("   ")).status).toBe(201);
+    expect(vi.mocked(reviewBuyer).mock.calls[0][0].comment).toBeUndefined();
+  });
+
+  it("passes the refusal through", async () => {
+    vi.mocked(reviewBuyer).mockResolvedValue({ ok: false, status: 403, reason: "only_seller_can_rate_buyer" });
+    const res = await request(app)
+      .post(`/api/orders/${ORDER_ID}/buyer-review`)
+      .set("Cookie", authCookie(BUYER_ID))
+      .send({ rating: 4 });
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe("only_seller_can_rate_buyer");
   });
 });
 

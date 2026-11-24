@@ -23,6 +23,13 @@ const ADDRESS = {
   state: "SP",
 };
 
+// A real (1×1) PNG, so the browser can read it like a photo of a document.
+export const PROOF_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  "base64"
+);
+const PROOF_PHOTO = `data:image/png;base64,${PROOF_PNG.toString("base64")}`;
+
 export interface TestUser {
   id: string;
   name: string;
@@ -38,10 +45,11 @@ async function ok<T>(response: Awaited<ReturnType<APIRequestContext["post"]>>): 
 }
 
 // Registers a resident. Without `buildingName` it adds a brand-new condominium,
-// giving the test its own isolated community.
+// giving the test its own isolated community. Their proof of residency is
+// approved straight away unless `pending` is set.
 export async function registerResident(
   request: APIRequestContext,
-  opts: { buildingName?: string; name?: string } = {}
+  opts: { buildingName?: string; name?: string; pending?: boolean } = {}
 ): Promise<TestUser> {
   const name = opts.name ?? unique("Resident");
   const email = `${name.replace(/\W+/g, ".").toLowerCase()}@e2e.test`;
@@ -52,11 +60,13 @@ export async function registerResident(
     password: PASSWORD,
     unitNumber: "12B",
     buildingBlock: "A",
+    proofPhoto: PROOF_PHOTO,
     ...(opts.buildingName
       ? { buildingName: opts.buildingName }
       : { newCondominium: { name: unique("Condo"), address: ADDRESS } }),
   };
   const user = await ok<{ id: string; buildingName: string }>(await request.post("/api/auth/register", { data: body }));
+  if (!opts.pending) await approveResidency({ id: user.id });
   return { id: user.id, name, email, password: PASSWORD, buildingName: user.buildingName };
 }
 
@@ -113,6 +123,22 @@ async function sql(text: string, params: unknown[]) {
 // There's no API for the first admin (it's a CLI script), so flip the flag directly.
 export async function makeAdmin(user: TestUser) {
   await sql("UPDATE users SET is_admin = TRUE WHERE id = $1", [user.id]);
+}
+
+// Stands in for a building admin's review.
+export async function approveResidency(user: Pick<TestUser, "id">) {
+  await sql("UPDATE users SET verified = TRUE, verification_reviewed_at = now(), verification_photo_key = NULL WHERE id = $1", [
+    user.id,
+  ]);
+}
+
+// Nominates a building admin without going through the admin screen.
+export async function makeBuildingAdmin(user: TestUser, buildingName: string) {
+  await sql(
+    `INSERT INTO building_admins (user_id, condominium_id)
+     SELECT $1, id FROM condominiums WHERE lower(trim(name)) = lower(trim($2))`,
+    [user.id, buildingName]
+  );
 }
 
 // Credits only come from sales and refunds, so grant them as a refund.

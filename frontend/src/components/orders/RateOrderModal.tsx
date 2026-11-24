@@ -5,18 +5,22 @@ import { Modal } from "@/components/ui/Modal";
 import { FieldGroup, Textarea } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { StarInput } from "@/components/ui/StarRating";
-import { reviewOrder } from "@/lib/api";
+import { reviewBuyer, reviewOrder } from "@/lib/api";
 import type { Order } from "@/types";
 import { useI18n } from "@/i18n/I18nProvider";
 import { errorMessage } from "@/lib/error-message";
 
-export function RateSellerModal({
+// The buyer rates the seller (target "seller"), or the seller rates the
+// buyer (target "buyer"), once the order is completed.
+export function RateOrderModal({
   order,
+  target,
   open,
   onClose,
   onRated,
 }: {
   order: Order;
+  target: "seller" | "buyer";
   open: boolean;
   onClose: () => void;
   onRated: (order: Order) => void;
@@ -36,7 +40,8 @@ export function RateSellerModal({
     setSubmitting(true);
     setError(null);
     try {
-      onRated(await reviewOrder(order.id, { rating, comment: comment.trim() || undefined }));
+      const submit = target === "seller" ? reviewOrder : reviewBuyer;
+      onRated(await submit(order.id, { rating, comment: comment.trim() || undefined }));
       onClose();
     } catch (err) {
       setError(errorMessage(err, t, locale, t.rate.error));
@@ -46,9 +51,9 @@ export function RateSellerModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={t.rate.title(order.sellerName)}>
+    <Modal open={open} onClose={onClose} title={t.rate.title(target === "seller" ? order.sellerName : order.buyerName)}>
       <form onSubmit={handleSubmit}>
-        <p className="mb-3 text-xs text-ink-400">{t.rate.howDidItGo(order.listingTitle)}</p>
+        <p className="mb-3 text-xs text-ink-400">{target === "seller" ? t.rate.howDidItGo(order.listingTitle) : t.rate.howDidSellingGo(order.listingTitle)}</p>
         <div className="mb-4 flex items-center gap-3">
           <StarInput
             value={rating}
@@ -65,7 +70,7 @@ export function RateSellerModal({
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             maxLength={1000}
-            placeholder={t.rate.commentPlaceholder}
+            placeholder={target === "seller" ? t.rate.commentPlaceholder : t.rate.buyerCommentPlaceholder}
           />
         </FieldGroup>
 

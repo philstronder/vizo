@@ -147,6 +147,20 @@ CREATE TABLE IF NOT EXISTS seller_reviews (
 
 CREATE INDEX IF NOT EXISTS idx_seller_reviews_seller ON seller_reviews(seller_id);
 
+-- The other direction: one rating per order, left by the seller once the
+-- order is completed. Shown to sellers as the buyer's reputation on new orders.
+CREATE TABLE IF NOT EXISTS buyer_reviews (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id          UUID NOT NULL UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
+  seller_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  buyer_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  rating            SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment           TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_buyer_reviews_buyer ON buyer_reviews(buyer_id);
+
 -- Admins create, edit and delete stores. Promote a user with:
 --   npm run user:make-admin -- someone@example.com
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;

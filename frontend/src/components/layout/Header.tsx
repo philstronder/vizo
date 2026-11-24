@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  BadgeCheck,
   Bell,
   Building2,
   LogOut,
@@ -18,7 +19,7 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAuth } from "@/lib/auth-context";
-import { fetchNotifications } from "@/lib/api";
+import { fetchNotifications, reviewsResidency } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { useI18n } from "@/i18n/I18nProvider";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -37,6 +38,8 @@ export function Header() {
   const unreadCount = user ? notificationCount : 0;
   // TV store viewer accounts have no building community to search or list in.
   const isViewer = !!user && !user.buildingName;
+  // Building admins (and platform admins) review proofs of residency.
+  const isReviewer = !!user && reviewsResidency(user);
 
   useEffect(() => {
     if (!user || storeMode) return;
@@ -125,6 +128,16 @@ export function Header() {
           <LanguageSwitcher />
           {user ? (
             <>
+              {isReviewer && (
+                <Button
+                  href="/verifications"
+                  variant="ghost"
+                  size="sm"
+                  className="hidden sm:inline-flex"
+                >
+                  <BadgeCheck size={16} /> {t.header.verifications}
+                </Button>
+              )}
               {user.isAdmin && (
                 <>
                   <Button
@@ -234,6 +247,16 @@ export function Header() {
               {!isViewer && (
                 <Button href="/sell/new" size="sm" fullWidth>
                   <Plus size={16} /> {t.header.newListing}
+                </Button>
+              )}
+              {isReviewer && (
+                <Button
+                  href="/verifications"
+                  variant="secondary"
+                  size="sm"
+                  fullWidth
+                >
+                  <BadgeCheck size={16} /> {t.header.verifications}
                 </Button>
               )}
               {user.isAdmin && (

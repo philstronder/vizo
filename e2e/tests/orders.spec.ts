@@ -12,7 +12,7 @@ import {
 
 // The full community sale after checkout: agreeing on a meetup, both sides
 // confirming the handoff, the held payment reaching the seller's wallet,
-// rating the seller, and cancelling.
+// rating each other, and cancelling.
 
 test.describe("order lifecycle", () => {
   test("meetup, handoff, payout, rating and withdrawal", async ({
@@ -38,6 +38,8 @@ test.describe("order lifecycle", () => {
     await signIn(page, seller);
     await page.goto("/orders");
     const sale = orderRow(page, listing.title);
+    // A first-time buyer has no reputation yet.
+    await expect(sale.getByText("No ratings yet")).toBeVisible();
     await expect(
       sale.getByText(
         `${buyer.name} suggested a pickup time. Confirm it or suggest another.`,
@@ -100,8 +102,35 @@ test.describe("order lifecycle", () => {
     await expect(page.getByText("(1 rating)")).toBeVisible();
     await expect(page.getByText("4.0", { exact: true })).toBeVisible();
 
-    // The seller has the sale's credits and withdraws them.
+    // The seller is asked to rate the buyer; the notification opens the
+    // rating form, and the rating becomes the buyer's reputation.
     await signIn(page, seller);
+    await page.goto("/orders");
+    const completedSale = orderRow(page, listing.title);
+    await expect(
+      completedSale.getByRole("button", { name: "Rate buyer" }),
+    ).toBeVisible();
+    await page
+      .getByRole("link", {
+        name: new RegExp(`${buyer.name} confirmed the handoff\\. Rate the buyer`),
+      })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: `Rate ${buyer.name}` }),
+    ).toBeVisible();
+    await page.getByRole("radio", { name: "5 stars" }).click();
+    await page
+      .getByPlaceholder("Was the buyer on time? Was the handoff easy?")
+      .fill("Right on time");
+    await page.getByRole("button", { name: "Submit rating" }).click();
+    await expect(
+      completedSale.getByText(`You rated ${buyer.name}`),
+    ).toBeVisible();
+    await page.reload();
+    await expect(completedSale.getByText("(1 rating)")).toBeVisible();
+    await expect(completedSale.getByText("5.0", { exact: true })).toBeVisible();
+
+    // The seller has the sale's credits and withdraws them.
     await page.goto("/wallet");
     await expect(page.getByRole("heading", { name: "Wallet" })).toBeVisible();
     await expect(page.getByText("Sale", { exact: true })).toBeVisible();

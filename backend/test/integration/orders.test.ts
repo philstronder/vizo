@@ -6,6 +6,7 @@ import {
   confirmDelivery,
   findOrderById,
   proposeMeetup,
+  reviewBuyer,
   reviewOrder,
 } from "../../src/db/orders";
 import { getBalance, getWallet } from "../../src/db/credits";
@@ -300,5 +301,80 @@ describe("reviewOrder", () => {
     expect(await reviewOrder(input)).toEqual({ ok: true });
     expect(await reviewOrder(input)).toMatchObject({ ok: false, status: 409, reason: "already_rated" });
     expect((await findOrderById(orderId))?.review_rating).toBe(5);
+  });
+});
+
+describe("reviewBuyer", () => {
+  it("lets the seller rate the buyer of a completed order once", async () => {
+    const orderId = await agreedOrder();
+    const input = { orderId, userId: seller, rating: 4, comment: "On time" };
+
+    expect(await reviewBuyer(input)).toMatchObject({ ok: false, status: 409, reason: "rate_buyer_after_delivery" });
+
+    await confirmDelivery(orderId, buyer);
+    await confirmDelivery(orderId, seller);
+    expect(await reviewBuyer({ ...input, userId: buyer })).toMatchObject({ ok: false, status: 403, reason: "only_seller_can_rate_buyer" });
+    expect(await reviewBuyer(input)).toEqual({ ok: true });
+    expect(await reviewBuyer(input)).toMatchObject({ ok: false, status: 409, reason: "already_rated" });
+
+    const order = await findOrderById(orderId);
+    expect(order?.buyer_review_rating).toBe(4);
+    // Rating the buyer doesn't count as the buyer rating the seller.
+    expect(order?.review_rating).toBeNull();
+  });
+
+  it("answers 404 for an unknown order", async () => {
+    const result = await reviewBuyer({ orderId: "00000000-0000-0000-0000-000000000000", userId: seller, rating: 4 });
+    expect(result).toMatchObject({ ok: false, status: 404, reason: "order_not_found" });
+  });
+
+  it("keeps each side's rating of the same order separate", async () => {
+    const orderId = await agreedOrder();
+    await confirmDelivery(orderId, buyer);
+    await confirmDelivery(orderId, seller);
+    expect(await reviewOrder({ orderId, userId: buyer, rating: 2 })).toEqual({ ok: true });
+    expect(await reviewBuyer({ orderId, userId: seller, rating: 5 })).toEqual({ ok: true });
+
+    const order = await findOrderById(orderId);
+    expect(order?.review_rating).toBe(2);
+    expect(order?.buyer_review_rating).toBe(5);
+    // Rating the seller doesn't count towards the buyer's own reputation.
+    expect(Number(order?.buyer_rating)).toBe(5);
+    expect(Number(order?.buyer_review_count)).toBe(1);
+  });
+
+  it("lets a store admin rate the buyer of a delivered store order", async () => {
+    const admin = await insertUser({ isAdmin: true });
+    const listingId = await insertListing(admin, { storeId: await insertStore(admin) });
+    const { orderId } = (await checkoutListingTx({ listingId, buyerId: buyer })) as { orderId: string };
+    await confirmDelivery(orderId, admin);
+    expect(await reviewBuyer({ orderId, userId: admin, rating: 4 })).toEqual({ ok: true });
+  });
+
+  it("only counts ratings of the order's own buyer in their reputation", async () => {
+    const other = await insertUser({ name: "Carla" });
+    const rated = await buy(await insertListing(seller), { buyerId: other });
+    expect((await acceptMeetup(rated, seller)).ok).toBe(true);
+    await confirmDelivery(rated, other);
+    await confirmDelivery(rated, seller);
+    expect(await reviewBuyer({ orderId: rated, userId: seller, rating: 1 })).toEqual({ ok: true });
+
+    const mine = await findOrderById(await buy(await insertListing(seller)));
+    expect(mine?.buyer_rating).toBeNull();
+    expect(Number(mine?.buyer_review_count)).toBe(0);
+  });
+
+  it("shows the buyer's reputation from past orders on their next order", async () => {
+    for (const rating of [5, 2]) {
+      const orderId = await agreedOrder();
+      await confirmDelivery(orderId, buyer);
+      await confirmDelivery(orderId, seller);
+      expect(await reviewBuyer({ orderId, userId: seller, rating })).toEqual({ ok: true });
+    }
+
+    const next = await findOrderById(await buy(await insertListing(seller)));
+    expect(next?.buyer_review_rating).toBeNull();
+    expect(Number(next?.buyer_rating)).toBe(3.5);
+    expect(Number(next?.buyer_review_count)).toBe(2);
   });
 });

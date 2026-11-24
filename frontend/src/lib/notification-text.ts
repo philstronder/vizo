@@ -12,8 +12,24 @@ export function notificationText(
   locale: Locale
 ): { title: string; body: string } {
   const p = n.params;
-  if (!p?.listingTitle) return { title: n.title, body: n.body };
   const tn = t.notification;
+
+  // Proof of residency notifications are about a building, not a listing.
+  if (p?.buildingName) {
+    switch (n.type) {
+      case "residency_submitted":
+        return { title: tn.residencySubmitted(p.actorName ?? "", p.buildingName), body: tn.residencySubmittedBody };
+      case "residency_approved":
+        return { title: tn.residencyApproved(p.buildingName), body: tn.residencyApprovedBody };
+      case "residency_rejected":
+        return {
+          title: tn.residencyRejected,
+          body: p.reason ? tn.residencyRejectedBodyReason(p.reason) : tn.residencyRejectedBody,
+        };
+    }
+  }
+
+  if (!p?.listingTitle) return { title: n.title, body: n.body };
   const title = p.listingTitle;
   const name = p.actorName ?? "";
   const amount = p.amount != null ? formatCurrency(p.amount, locale) : "";
@@ -34,7 +50,15 @@ export function notificationText(
     case "delivery_confirmed":
       return { title: tn.deliveryConfirmed(title), body: tn.deliveryConfirmedBody(name) };
     case "order_completed":
-      return { title: tn.orderCompleted(title), body: tn.orderCompletedBody(name) };
+      return {
+        title: tn.orderCompleted(title),
+        body:
+          p.variant === "rateBuyer"
+            ? tn.orderCompletedRateBuyer(name)
+            : p.variant === "rateSeller"
+              ? tn.orderCompletedRateSeller(name)
+              : tn.orderCompletedBody(name),
+      };
     case "payment_released":
       return { title: tn.paymentReleased, body: tn.paymentReleasedBody(amount, title) };
     case "meetup_proposed":

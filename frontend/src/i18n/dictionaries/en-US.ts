@@ -98,6 +98,7 @@ export const enUS = {
     stores: "Stores",
     condominiums: "Condominiums",
     admins: "Admins",
+    verifications: "Verifications",
   },
 
   auth: {
@@ -348,6 +349,8 @@ export const enUS = {
     caughtUp: "You're all caught up.",
     youRated: (name: string) => `You rated ${name}`,
     rateSeller: "Rate seller",
+    rateBuyer: "Rate buyer",
+    buyerReputation: "Buyer reputation",
     markDelivered: "Mark as delivered",
     updateError: "Could not update order",
     payment: {
@@ -472,6 +475,66 @@ export const enUS = {
     you: "You",
   },
 
+  buildingAdmins: {
+    title: "Building admins",
+    subtitle:
+      "Building admins review the proof of residency of people signing up to their condominium. Requests for condominiums without one come to platform admins.",
+    condominium: "Condominium",
+    email: "Email of the building admin",
+    add: "Add building admin",
+    addError: "Unable to add building admin",
+    removeError: "Unable to remove building admin",
+    confirmRemove: (name: string, condominium: string) =>
+      `Remove ${name} as building admin of ${condominium}?`,
+    removeFrom: (name: string, condominium: string) =>
+      `Remove ${name} from ${condominium}`,
+    empty: "No building admins yet.",
+  },
+
+  // What residents see while their proof of residency is reviewed.
+  residency: {
+    pendingTitle: "Your residency is being reviewed",
+    pendingHint: (building: string) =>
+      `A building admin of ${building} is checking your proof of residency. You'll get a notification once it's approved, and then you can buy and sell with your neighbors.`,
+    rejectedTitle: "Your proof of residency wasn't approved",
+    rejectedHint: (building: string) =>
+      `Send a new photo of a document showing you live in ${building}.`,
+    reason: (reason: string) => `Reason: ${reason}`,
+    sendNewPhoto: "Send new photo",
+    sending: "Sending...",
+    resubmitError: "Could not send the photo",
+    proofAlt: "Proof of residency",
+    unreadablePhoto: "Could not read this image. Try another photo.",
+    changingBuildingHint:
+      "Moving to another building? Its building admin needs to approve a new proof of residency first.",
+  },
+
+  verifications: {
+    title: "Residency verifications",
+    subtitleFor: (buildings: string) =>
+      `People who want to join ${buildings}. Check that the document shows their name and an address in the building.`,
+    subtitleAll:
+      "People waiting for their proof of residency to be approved, across every building.",
+    loading: "Loading requests...",
+    loadError: "Could not load the requests",
+    emptyTitle: "All caught up",
+    emptyHint: "No proofs of residency are waiting for review.",
+    building: "Building",
+    unit: "Unit",
+    block: (block: string) => `Block ${block}`,
+    sent: "Sent",
+    noPhoto: "No photo",
+    openPhoto: "Enlarge photo",
+    proofOf: (name: string) => `Proof of residency of ${name}`,
+    approve: "Approve",
+    reject: "Reject",
+    reason: "Reason (shown to the resident)",
+    reasonPlaceholder: "e.g. The address on the bill is from another building",
+    confirmReject: "Reject request",
+    cancel: "Cancel",
+    reviewError: "Could not save your decision",
+  },
+
   condominiumSearch: {
     noResults: "No condominium found",
     moreResults: (count: number) =>
@@ -551,6 +614,10 @@ export const enUS = {
       `${name} confirmed the handoff. Confirm it too to complete the order.`,
     orderCompleted: (title: string) => `${title} delivered`,
     orderCompletedBody: (name: string) => `${name} marked this order as delivered.`,
+    orderCompletedRateBuyer: (name: string) =>
+      `${name} confirmed the handoff. Rate the buyer so other sellers know how it went.`,
+    orderCompletedRateSeller: (name: string) =>
+      `${name} confirmed the handoff. Rate the seller so other buyers know how it went.`,
     paymentReleased: "Payment released",
     paymentReleasedBody: (amount: string, title: string) =>
       `${amount} in credits from ${title} were added to your wallet.`,
@@ -564,6 +631,16 @@ export const enUS = {
       `${name} cancelled the order. Your item is back on sale.`,
     orderCancelledBySeller: (name: string) =>
       `${name} cancelled the order. Your payment was refunded.`,
+    residencySubmitted: (name: string, building: string) =>
+      `${name} wants to join ${building}`,
+    residencySubmittedBody: "Review their proof of residency.",
+    residencyApproved: (building: string) => `Welcome to ${building}`,
+    residencyApprovedBody:
+      "Your proof of residency was approved. You can now buy and sell with your neighbors.",
+    residencyRejected: "Proof of residency not approved",
+    residencyRejectedBody: "Send a new photo to try again.",
+    residencyRejectedBodyReason: (reason: string) =>
+      `Reason: ${reason}. Send a new photo to try again.`,
   },
 
   // Server errors by code. bidTooLow/orderAlreadyStatus get their value
@@ -587,6 +664,14 @@ export const enUS = {
     cep_invalid: "CEP must have 8 digits.",
     cep_unavailable: "CEP lookup is unavailable.",
     cep_not_found: "CEP not found.",
+    residency_not_verified: "Your proof of residency hasn't been approved yet.",
+    residency_proof_required: "Send a photo proving you live in this building.",
+    residency_already_verified: "Your residency is already verified.",
+    residency_reviewers_only: "Only building admins can review proofs of residency.",
+    residency_request_not_found: "This request was already reviewed, or doesn't exist.",
+    cannot_review_own_residency: "You can't review your own proof of residency.",
+    building_admin_email_not_found: "No account with this email. Ask them to sign up first.",
+    building_admin_not_found: "This person isn't a building admin of this condominium.",
     listing_not_found: "Listing not found.",
     listing_not_found_or_not_owner: "Listing not found, or you don't own it.",
     sign_in_to_see_listings: "Sign in to see your community's listings.",
@@ -621,6 +706,8 @@ export const enUS = {
     only_buyer_can_rate: "Only the buyer can rate this seller.",
     rate_after_delivery: "You can rate the seller once the order is delivered.",
     already_rated: "You already rated this order.",
+    only_seller_can_rate_buyer: "Only the seller can rate this buyer.",
+    rate_buyer_after_delivery: "You can rate the buyer once the order is delivered.",
     insufficient_credits: "You don't have enough credits for this withdrawal.",
     notification_not_found: "Notification not found.",
   } satisfies Record<ApiErrorCode, string | ((value: string) => string)>,
@@ -628,9 +715,11 @@ export const enUS = {
   rate: {
     title: (name: string) => `Rate ${name}`,
     howDidItGo: (title: string) => `How did buying “${title}” go?`,
+    howDidSellingGo: (title: string) => `How did selling “${title}” go?`,
     labels: ["", "Poor", "Fair", "Good", "Very good", "Excellent"],
     comment: "Comment (optional)",
     commentPlaceholder: "Was the item as described? Was pickup easy?",
+    buyerCommentPlaceholder: "Was the buyer on time? Was the handoff easy?",
     pickRating: "Pick a rating from 1 to 5 stars",
     error: "Could not save your rating",
     submit: "Submit rating",
