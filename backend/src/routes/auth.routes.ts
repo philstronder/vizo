@@ -54,7 +54,7 @@ authRouter.post("/register", async (req, res, next) => {
   try {
     const input = registerSchema.parse({ accountType: "resident", ...req.body });
     const existing = await findUserByEmail(input.email);
-    if (existing) throw conflict("An account with this email already exists");
+    if (existing) throw conflict("email_taken");
 
     // Residents pick from the admin-maintained list, or add their condominium
     // when it's missing. Store the list's exact name so everyone in the
@@ -64,11 +64,11 @@ authRouter.post("/register", async (req, res, next) => {
       if (input.newCondominium) {
         const { name, address } = input.newCondominium;
         const created = await createCondominium(name, address);
-        if (!created) throw conflict("This condominium is already on the list; choose it there");
+        if (!created) throw conflict("condominium_exists_choose");
         buildingName = created.name;
       } else {
         const condominium = input.buildingName ? await findCondominiumByName(input.buildingName) : null;
-        if (!condominium) throw badRequest("Choose a condominium from the list");
+        if (!condominium) throw badRequest("choose_condominium");
         buildingName = condominium.name;
       }
     }
@@ -99,10 +99,10 @@ authRouter.post("/login", async (req, res, next) => {
   try {
     const input = loginSchema.parse(req.body);
     const user = await findUserByEmail(input.email);
-    if (!user) throw unauthorized("Invalid email or password");
+    if (!user) throw unauthorized("invalid_credentials");
 
     const valid = await verifyPassword(input.password, user.password_hash);
-    if (!valid) throw unauthorized("Invalid email or password");
+    if (!valid) throw unauthorized("invalid_credentials");
 
     setAuthCookie(res, user.id);
     res.json(toPublicUser(user));
@@ -119,7 +119,7 @@ authRouter.post("/logout", (_req, res) => {
 authRouter.get("/me", requireAuth, async (req, res, next) => {
   try {
     const user = await findUserById(req.userId!);
-    if (!user) throw notFound("User not found");
+    if (!user) throw notFound("user_not_found");
     res.json(toPublicUser(user));
   } catch (err) {
     next(err);
@@ -151,17 +151,17 @@ authRouter.patch("/me", requireAuth, async (req, res, next) => {
     // always allowed, even if admins have since removed it from the list.
     if (input.buildingName !== undefined) {
       const current = await findUserById(req.userId!);
-      if (!current) throw notFound("User not found");
+      if (!current) throw notFound("user_not_found");
       if (!sameBuilding(current.building_name, input.buildingName)) {
         const condominium = await findCondominiumByName(input.buildingName);
-        if (!condominium) throw badRequest("Choose a condominium from the list");
+        if (!condominium) throw badRequest("choose_condominium");
         input.buildingName = condominium.name;
       } else {
         input.buildingName = current.building_name!;
       }
     }
     const user = await updateUser(req.userId!, input);
-    if (!user) throw notFound("User not found");
+    if (!user) throw notFound("user_not_found");
     res.json(toPublicUser(user));
   } catch (err) {
     next(err);

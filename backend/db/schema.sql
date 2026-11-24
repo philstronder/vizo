@@ -130,6 +130,9 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC);
+-- Values the frontend uses to render the notification in the viewer's language
+-- (title/body keep an English copy for rows created before this column).
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS params JSONB;
 
 -- One rating per order, left by the buyer once the order is completed.
 CREATE TABLE IF NOT EXISTS seller_reviews (
@@ -278,3 +281,50 @@ CREATE TABLE IF NOT EXISTS order_messages (
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_order_messages_order ON order_messages(order_id, created_at);
+
+-- Backfills params for notifications created before the column existed, by
+-- reading them back from the English text they were stored with, so they are
+-- shown in the viewer's language too. Rows that don't match stay as they are.
+-- type is compared as text because some enum values are added in this same run.
+UPDATE notifications n SET params = p.params
+FROM (
+  SELECT id, jsonb_strip_nulls(CASE type::text
+    WHEN 'sold' THEN jsonb_build_object(
+      'listingTitle', substring(title FROM '^(.*) sold!$'),
+      'variant', CASE WHEN body = 'Your item was purchased.' THEN 'store' ELSE 'held' END)
+    WHEN 'new_bid' THEN jsonb_build_object(
+      'listingTitle', substring(title FROM '^New bid on (.*)$'),
+      'amount', substring(body FROM '^Someone bid \$([0-9.]+)\.$')::numeric)
+    WHEN 'message' THEN CASE
+      WHEN title ~ '^.* sent you a message about .*$' THEN jsonb_build_object(
+        'actorName', (regexp_match(title, '^(.*) sent you a message about (.*)$'))[1],
+        'listingTitle', (regexp_match(title, '^(.*) sent you a message about (.*)$'))[2],
+        'variant', 'order')
+      ELSE jsonb_build_object(
+        'listingTitle', substring(title FROM '^New message on (.*)$'),
+        'variant', 'listing')
+      END
+    WHEN 'delivery_confirmed' THEN jsonb_build_object(
+      'listingTitle', substring(title FROM '^(.*): confirm the handoff$'),
+      'actorName', substring(body FROM '^(.*) confirmed the handoff\.'))
+    WHEN 'order_completed' THEN jsonb_build_object(
+      'listingTitle', substring(title FROM '^(.*) delivered$'),
+      'actorName', substring(body FROM '^(.*) marked this order as delivered\.$'))
+    WHEN 'payment_released' THEN jsonb_build_object(
+      'listingTitle', (regexp_match(body, '^([0-9.]+) in credits from (.*) were added to your wallet\.$'))[2],
+      'amount', (regexp_match(body, '^([0-9.]+) in credits from (.*) were added to your wallet\.$'))[1]::numeric)
+    WHEN 'meetup_proposed' THEN jsonb_build_object(
+      'listingTitle', substring(title FROM '^New meetup time for (.*)$'),
+      'actorName', substring(body FROM '^(.*) suggested another time to meet\.'))
+    WHEN 'meetup_confirmed' THEN jsonb_build_object(
+      'listingTitle', substring(title FROM '^Meetup confirmed for (.*)$'),
+      'actorName', substring(body FROM '^(.*) accepted the meetup time\.$'))
+    WHEN 'order_cancelled' THEN jsonb_build_object(
+      'listingTitle', substring(title FROM '^(.*) order cancelled$'),
+      'actorName', substring(body FROM '^(.*) cancelled the order\.'),
+      'variant', CASE WHEN body LIKE '%Your item is back on sale.' THEN 'byBuyer' ELSE 'bySeller' END)
+  END) AS params
+  FROM notifications
+  WHERE params IS NULL
+) p
+WHERE n.id = p.id AND p.params ? 'listingTitle';

@@ -1,4 +1,5 @@
 import { pool } from "./pool";
+import type { ErrorCode, ErrorParams } from "../lib/http-error";
 
 export interface ListingRow {
   id: string;
@@ -228,7 +229,7 @@ export async function placeBidTx(
   listingId: string,
   bidderId: string,
   amount: number
-): Promise<{ ok: true } | { ok: false; reason: string }> {
+): Promise<{ ok: true } | { ok: false; reason: ErrorCode; params?: ErrorParams }> {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -245,20 +246,20 @@ export async function placeBidTx(
     const listing = rows[0];
     if (!listing) {
       await client.query("ROLLBACK");
-      return { ok: false, reason: "Listing not found" };
+      return { ok: false, reason: "listing_not_found" };
     }
     if (listing.type !== "auction" || listing.status !== "active") {
       await client.query("ROLLBACK");
-      return { ok: false, reason: "This listing is not an active auction" };
+      return { ok: false, reason: "auction_not_active" };
     }
     if (listing.auction_ends_at && listing.auction_ends_at.getTime() < Date.now()) {
       await client.query("ROLLBACK");
-      return { ok: false, reason: "This auction has ended" };
+      return { ok: false, reason: "auction_ended" };
     }
     const floor = Number(listing.current_bid ?? listing.starting_price ?? 0);
     if (amount <= floor) {
       await client.query("ROLLBACK");
-      return { ok: false, reason: `Bid must be greater than ${floor}` };
+      return { ok: false, reason: "bid_too_low", params: { floor } };
     }
 
     await client.query(

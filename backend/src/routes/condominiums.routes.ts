@@ -26,7 +26,7 @@ condominiumsRouter.post("/", requireAdmin, async (req, res, next) => {
   try {
     const { name, address } = condominiumSchema.parse(req.body);
     const row = await createCondominium(name, address);
-    if (!row) throw conflict("This condominium is already on the list");
+    if (!row) throw conflict("condominium_exists");
     res.status(201).json(toApiCondominium(row));
   } catch (err) {
     next(err);
@@ -36,7 +36,7 @@ condominiumsRouter.post("/", requireAdmin, async (req, res, next) => {
 condominiumsRouter.delete("/:id", requireAdmin, async (req, res, next) => {
   try {
     const deleted = await deleteCondominium(req.params.id as string);
-    if (!deleted) throw notFound("Condominium not found");
+    if (!deleted) throw notFound("condominium_not_found");
     res.status(204).end();
   } catch (err) {
     next(err);

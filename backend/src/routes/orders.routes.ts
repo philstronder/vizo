@@ -76,11 +76,12 @@ ordersRouter.post("/", requireAuth, async (req, res, next) => {
           ? "Your item was purchased."
           : "Your item was purchased and the payment is held by MyVizo. Review the buyer's suggested meetup time.",
         href: "/orders",
+        params: { listingTitle: listing.title, variant: listing.store_id ? "store" : "held" },
       });
     }
 
     const order = await findOrderById(result.orderId);
-    if (!order) throw notFound("Order not found");
+    if (!order) throw notFound("order_not_found");
     res.status(201).json(toApiOrder(order));
   } catch (err) {
     next(err);
@@ -91,7 +92,7 @@ ordersRouter.post("/", requireAuth, async (req, res, next) => {
 ordersRouter.patch("/:id/complete", requireAuth, async (req, res, next) => {
   try {
     const result = await confirmDelivery(req.params.id as string, req.userId!);
-    if (!result.ok) throw new HttpError(result.status, result.reason);
+    if (!result.ok) throw new HttpError(result.status, result.reason, result.params);
     const { order, value } = result;
     const { actorName, otherId } = counterpart(order, req.userId!);
 
@@ -102,6 +103,7 @@ ordersRouter.patch("/:id/complete", requireAuth, async (req, res, next) => {
         title: `${order.listing_title}: confirm the handoff`,
         body: `${actorName} confirmed the handoff. Confirm it too to complete the order.`,
         href: "/orders",
+        params: { listingTitle: order.listing_title, actorName },
       });
     } else {
       await createNotification({
@@ -110,6 +112,7 @@ ordersRouter.patch("/:id/complete", requireAuth, async (req, res, next) => {
         title: `${order.listing_title} delivered`,
         body: `${actorName} marked this order as delivered.`,
         href: "/orders",
+        params: { listingTitle: order.listing_title, actorName },
       });
     }
     if (value.releasedAmount > 0) {
@@ -119,6 +122,7 @@ ordersRouter.patch("/:id/complete", requireAuth, async (req, res, next) => {
         title: "Payment released",
         body: `${value.releasedAmount.toFixed(2)} in credits from ${order.listing_title} were added to your wallet.`,
         href: "/wallet",
+        params: { listingTitle: order.listing_title, amount: value.releasedAmount },
       });
     }
 
@@ -132,7 +136,7 @@ ordersRouter.patch("/:id/meetup", requireAuth, async (req, res, next) => {
   try {
     const { meetupAt } = z.object({ meetupAt: meetupAtSchema }).parse(req.body);
     const result = await proposeMeetup(req.params.id as string, req.userId!, meetupAt);
-    if (!result.ok) throw new HttpError(result.status, result.reason);
+    if (!result.ok) throw new HttpError(result.status, result.reason, result.params);
     const { actorName, otherId } = counterpart(result.order, req.userId!);
     await createNotification({
       userId: otherId,
@@ -140,6 +144,7 @@ ordersRouter.patch("/:id/meetup", requireAuth, async (req, res, next) => {
       title: `New meetup time for ${result.order.listing_title}`,
       body: `${actorName} suggested another time to meet. Accept it or suggest a different one.`,
       href: "/orders",
+      params: { listingTitle: result.order.listing_title, actorName },
     });
     res.json(toApiOrder(result.order));
   } catch (err) {
@@ -150,7 +155,7 @@ ordersRouter.patch("/:id/meetup", requireAuth, async (req, res, next) => {
 ordersRouter.post("/:id/meetup/accept", requireAuth, async (req, res, next) => {
   try {
     const result = await acceptMeetup(req.params.id as string, req.userId!);
-    if (!result.ok) throw new HttpError(result.status, result.reason);
+    if (!result.ok) throw new HttpError(result.status, result.reason, result.params);
     const { actorName, otherId } = counterpart(result.order, req.userId!);
     await createNotification({
       userId: otherId,
@@ -158,6 +163,7 @@ ordersRouter.post("/:id/meetup/accept", requireAuth, async (req, res, next) => {
       title: `Meetup confirmed for ${result.order.listing_title}`,
       body: `${actorName} accepted the meetup time.`,
       href: "/orders",
+      params: { listingTitle: result.order.listing_title, actorName },
     });
     res.json(toApiOrder(result.order));
   } catch (err) {
@@ -168,7 +174,7 @@ ordersRouter.post("/:id/meetup/accept", requireAuth, async (req, res, next) => {
 ordersRouter.post("/:id/cancel", requireAuth, async (req, res, next) => {
   try {
     const result = await cancelOrder(req.params.id as string, req.userId!);
-    if (!result.ok) throw new HttpError(result.status, result.reason);
+    if (!result.ok) throw new HttpError(result.status, result.reason, result.params);
     const { actorName, otherId } = counterpart(result.order, req.userId!);
     await createNotification({
       userId: otherId,
@@ -178,6 +184,11 @@ ordersRouter.post("/:id/cancel", requireAuth, async (req, res, next) => {
         ? `${actorName} cancelled the order. Your item is back on sale.`
         : `${actorName} cancelled the order. Your payment was refunded.`,
       href: "/orders",
+      params: {
+        listingTitle: result.order.listing_title,
+        actorName,
+        variant: result.value.cancelledByBuyer ? "byBuyer" : "bySeller",
+      },
     });
     res.json(toApiOrder(result.order));
   } catch (err) {
@@ -200,10 +211,10 @@ ordersRouter.post("/:id/review", requireAuth, async (req, res, next) => {
       rating: input.rating,
       comment: input.comment || undefined,
     });
-    if (!result.ok) throw new HttpError(result.status, result.reason);
+    if (!result.ok) throw new HttpError(result.status, result.reason, result.params);
 
     const order = await findOrderById(orderId);
-    if (!order) throw notFound("Order not found");
+    if (!order) throw notFound("order_not_found");
     res.status(201).json(toApiOrder(order));
   } catch (err) {
     next(err);
@@ -213,9 +224,9 @@ ordersRouter.post("/:id/review", requireAuth, async (req, res, next) => {
 // Loads an order for its chat, which only the buyer and the seller can see.
 async function findOrderForParticipant(orderId: string, userId: string) {
   const order = await findOrderById(orderId);
-  if (!order) throw notFound("Order not found");
+  if (!order) throw notFound("order_not_found");
   if (order.buyer_id !== userId && order.seller_id !== userId) {
-    throw forbidden("Only the buyer or seller can see this conversation");
+    throw forbidden("order_chat_participants_only");
   }
   return order;
 }
@@ -236,7 +247,7 @@ ordersRouter.post("/:id/messages", requireAuth, async (req, res, next) => {
   try {
     const { body } = orderMessageSchema.parse(req.body);
     const order = await findOrderForParticipant(req.params.id as string, req.userId!);
-    if (order.status === "cancelled") throw conflict("This order was cancelled");
+    if (order.status === "cancelled") throw conflict("order_cancelled");
 
     const { message, hadUnread } = await createOrderMessage(order.id, req.userId!, body);
     // One notification per batch of unread messages, not one per message.
@@ -248,6 +259,7 @@ ordersRouter.post("/:id/messages", requireAuth, async (req, res, next) => {
         title: `${actorName} sent you a message about ${order.listing_title}`,
         body,
         href: `/orders?chat=${order.id}`,
+        params: { listingTitle: order.listing_title, actorName, variant: "order" },
       });
     }
     res.status(201).json(toApiOrderMessage(message));

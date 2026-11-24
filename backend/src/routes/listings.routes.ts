@@ -45,13 +45,13 @@ listingsRouter.get("/", async (req, res, next) => {
     let scope: Pick<ListingFilters, "storeId" | "buildingName">;
     if (typeof storeId === "string") {
       const store = await findStoreById(storeId);
-      if (!store) throw notFound("Store not found");
+      if (!store) throw notFound("store_not_found");
       scope = { storeId: store.id };
     } else {
-      if (!req.userId) throw unauthorized("Sign in to see your community's listings");
+      if (!req.userId) throw unauthorized("sign_in_to_see_listings");
       const viewer = await findUserById(req.userId);
       if (!viewer) throw unauthorized();
-      if (viewer.building_name === null) throw forbidden("TV store accounts don't have a building community");
+      if (viewer.building_name === null) throw forbidden("tv_account_no_community");
       scope = { buildingName: viewer.building_name };
     }
 
@@ -110,10 +110,10 @@ listingsRouter.post("/", requireAuth, async (req, res, next) => {
     const seller = await findUserById(req.userId!);
     if (!seller) throw unauthorized();
     if (input.storeId) {
-      if (!seller.is_admin) throw forbidden("Only admins can add products to a store");
-      if (!(await findStoreById(input.storeId))) throw notFound("Store not found");
+      if (!seller.is_admin) throw forbidden("store_products_admin_only");
+      if (!(await findStoreById(input.storeId))) throw notFound("store_not_found");
     } else if (seller.building_name === null) {
-      throw forbidden("Add a building to your profile to list items in a community");
+      throw forbidden("building_required_to_list");
     }
     const listing = await createListing({
       sellerId: req.userId!,
@@ -151,7 +151,7 @@ listingsRouter.delete("/:id", requireAuth, async (req, res, next) => {
   try {
     const listingId = req.params.id as string;
     const deleted = await deleteListing(listingId, req.userId!);
-    if (!deleted) throw notFound("Listing not found, or you don't own it");
+    if (!deleted) throw notFound("listing_not_found_or_not_owner");
     res.status(204).end();
   } catch (err) {
     next(err);
@@ -166,7 +166,7 @@ listingsRouter.post("/:id/restock", requireAdmin, async (req, res, next) => {
     const listingId = req.params.id as string;
     const { quantity } = restockSchema.parse(req.body);
     const restocked = await restockListing(listingId, quantity);
-    if (!restocked) throw notFound("Store product not found, or it can't be restocked");
+    if (!restocked) throw notFound("store_product_not_restockable");
     const listing = await findListingById(listingId);
     res.json(toApiListing(listing!));
   } catch (err) {
@@ -191,10 +191,10 @@ listingsRouter.post("/:id/bids", requireAuth, async (req, res, next) => {
     const listingId = req.params.id as string;
     const { amount } = placeBidSchema.parse(req.body);
     const listing = await findViewableListing(listingId, req.userId);
-    if (listing.seller_id === req.userId) throw forbidden("You cannot bid on your own listing");
+    if (listing.seller_id === req.userId) throw forbidden("cannot_bid_own_listing");
 
     const result = await placeBidTx(listingId, req.userId!, amount);
-    if (!result.ok) throw badRequest(result.reason);
+    if (!result.ok) throw badRequest(result.reason, result.params);
 
     await createNotification({
       userId: listing.seller_id,
@@ -202,6 +202,7 @@ listingsRouter.post("/:id/bids", requireAuth, async (req, res, next) => {
       title: `New bid on ${listing.title}`,
       body: `Someone bid $${amount}.`,
       href: `/listing/${listing.id}`,
+      params: { listingTitle: listing.title, amount },
     });
 
     const updated = await findListingById(listingId);
@@ -233,7 +234,7 @@ listingsRouter.post("/:id/messages", requireAuth, async (req, res, next) => {
     const listingId = req.params.id as string;
     const { body } = postMessageSchema.parse(req.body);
     const listing = await findViewableListing(listingId, req.userId);
-    if (listing.store_id) throw badRequest("Store products don't take questions");
+    if (listing.store_id) throw badRequest("store_no_questions");
 
     const message = await createMessage(listingId, req.userId!, body);
 
@@ -244,6 +245,7 @@ listingsRouter.post("/:id/messages", requireAuth, async (req, res, next) => {
         title: `New message on ${listing.title}`,
         body,
         href: `/listing/${listing.id}`,
+        params: { listingTitle: listing.title, variant: "listing" },
       });
     }
 

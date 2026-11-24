@@ -88,7 +88,7 @@ test.describe("marketplace", () => {
 
     await expect(page).toHaveURL("/orders");
     await expect(page.getByText(listing.title, { exact: true })).toBeVisible();
-    await expect(page.getByText("Payment held by VIZO").first()).toBeVisible();
+    await expect(page.getByText("Payment held by MyVizo").first()).toBeVisible();
 
     // The listing is off the market.
     await page.goto(`/listing/${listing.id}`);

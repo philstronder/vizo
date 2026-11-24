@@ -16,7 +16,7 @@ interface ViaCepResponse {
 cepRouter.get("/:cep", async (req, res, next) => {
   try {
     const cep = (req.params.cep as string).replace(/\D/g, "");
-    if (cep.length !== 8) throw badRequest("CEP must have 8 digits");
+    if (cep.length !== 8) throw badRequest("cep_invalid");
 
     let data: ViaCepResponse;
     try {
@@ -26,9 +26,9 @@ cepRouter.get("/:cep", async (req, res, next) => {
       if (!upstream.ok) throw new Error(`ViaCEP responded ${upstream.status}`);
       data = (await upstream.json()) as ViaCepResponse;
     } catch {
-      throw new HttpError(502, "CEP lookup is unavailable");
+      throw new HttpError(502, "cep_unavailable");
     }
-    if (data.erro) throw notFound("CEP not found");
+    if (data.erro) throw notFound("cep_not_found");
 
     res.json({
       postalCode: `${cep.slice(0, 5)}-${cep.slice(5)}`,

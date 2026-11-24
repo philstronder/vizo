@@ -27,7 +27,7 @@ storesRouter.get("/", requireAdmin, async (_req, res, next) => {
 storesRouter.get("/:id", async (req, res, next) => {
   try {
     const store = await findStoreById(req.params.id as string);
-    if (!store) throw notFound("Store not found");
+    if (!store) throw notFound("store_not_found");
     res.json(toApiStore(store));
   } catch (err) {
     next(err);
@@ -53,7 +53,7 @@ storesRouter.patch("/:id", requireAdmin, async (req, res, next) => {
   try {
     const input = storeSchema.parse(req.body);
     const store = await updateStore(req.params.id as string, input);
-    if (!store) throw notFound("Store not found");
+    if (!store) throw notFound("store_not_found");
     res.json(toApiStore(store));
   } catch (err) {
     next(err);
@@ -63,7 +63,7 @@ storesRouter.patch("/:id", requireAdmin, async (req, res, next) => {
 storesRouter.delete("/:id", requireAdmin, async (req, res, next) => {
   try {
     const deleted = await deleteStore(req.params.id as string);
-    if (!deleted) throw notFound("Store not found");
+    if (!deleted) throw notFound("store_not_found");
     res.status(204).end();
   } catch (err) {
     next(err);

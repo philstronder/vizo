@@ -9,6 +9,7 @@ import { formatDateTime, toDateTimeLocalValue } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { Order, OrderStatus } from "@/types";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 
 const openStatuses: OrderStatus[] = ["pending_pickup", "ready_for_pickup", "shipped"];
 
@@ -52,7 +53,7 @@ export function OrderHandoff({
       setProposing(false);
       setConfirmingCancel(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.orders.updateError);
+      setError(errorMessage(err, t, locale, t.orders.updateError));
     } finally {
       setBusy(false);
     }

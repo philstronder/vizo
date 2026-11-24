@@ -13,9 +13,10 @@ import { StoreFormModal } from "./StoreFormModal";
 import { StoreProductStock } from "./StoreProductStock";
 import { StoreQrCode } from "./StoreQrCode";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 
 export function StoreView({ storeId, purchased }: { storeId: string; purchased: boolean }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const { user } = useAuth();
   const router = useRouter();
   const inStoreMode = useStoreMode() === storeId;
@@ -60,7 +61,7 @@ export function StoreView({ storeId, purchased }: { storeId: string; purchased: 
       await deleteStore(storeId);
       router.push("/stores");
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : t.store.deleteError);
+      setDeleteError(errorMessage(err, t, locale, t.store.deleteError));
     }
   }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HttpError, badRequest, conflict, forbidden, notFound, unauthorized } from "../../src/lib/http-error";
+import { HttpError, badRequest, conflict, errorMessage, forbidden, notFound, unauthorized } from "../../src/lib/http-error";
 import { signAuthToken, verifyAuthToken } from "../../src/lib/jwt";
 import { hashPassword, verifyPassword } from "../../src/lib/password";
 import { condominiumSchema, deliveryAddressSchema } from "../../src/lib/schemas";
@@ -20,14 +20,22 @@ const address = {
 
 describe("http-error", () => {
   it.each([
-    [badRequest("x"), 400],
+    [badRequest("invalid_request"), 400],
     [unauthorized(), 401],
     [forbidden(), 403],
     [notFound(), 404],
-    [conflict("x"), 409],
+    [conflict("already_rated"), 409],
   ])("builds an HttpError with the right status", (err, status) => {
     expect(err).toBeInstanceOf(HttpError);
     expect(err.status).toBe(status);
+  });
+
+  it("keeps the code and fills the English message from the params", () => {
+    const err = badRequest("bid_too_low", { floor: 50 });
+    expect(err.code).toBe("bid_too_low");
+    expect(err.params).toEqual({ floor: 50 });
+    expect(err.message).toBe("Bid must be greater than 50");
+    expect(errorMessage("order_already_status", { status: "completed" })).toBe("This order is already completed");
   });
 });
 

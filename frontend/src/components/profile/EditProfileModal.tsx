@@ -13,10 +13,11 @@ import {
 import { CondominiumSelect } from "@/components/account/CondominiumSelect";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 
 export function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user, updateProfile } = useAuth();
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [name, setName] = useState("");
   const [buildingName, setBuildingName] = useState("");
   const [unitNumber, setUnitNumber] = useState("");
@@ -78,7 +79,7 @@ export function EditProfileModal({ open, onClose }: { open: boolean; onClose: ()
       );
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.profile.saveError);
+      setError(errorMessage(err, t, locale, t.profile.saveError));
     } finally {
       setSubmitting(false);
     }

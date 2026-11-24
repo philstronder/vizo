@@ -8,6 +8,7 @@ import { StarInput } from "@/components/ui/StarRating";
 import { reviewOrder } from "@/lib/api";
 import type { Order } from "@/types";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 
 export function RateSellerModal({
   order,
@@ -20,7 +21,7 @@ export function RateSellerModal({
   onClose: () => void;
   onRated: (order: Order) => void;
 }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -38,7 +39,7 @@ export function RateSellerModal({
       onRated(await reviewOrder(order.id, { rating, comment: comment.trim() || undefined }));
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.rate.error);
+      setError(errorMessage(err, t, locale, t.rate.error));
     } finally {
       setSubmitting(false);
     }

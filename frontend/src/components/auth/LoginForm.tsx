@@ -8,6 +8,7 @@ import { FieldGroup, Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 import { safeNext, storeHref, useStoreMode } from "@/lib/store-mode";
 
 // `next` is where to go once signed in, e.g. back to the product a store
@@ -17,7 +18,7 @@ export function LoginForm({ next }: { next?: string }) {
   const storeId = useStoreMode();
   const destination = safeNext(next) ?? (storeId ? storeHref(storeId) : "/");
   const { login } = useAuth();
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +32,7 @@ export function LoginForm({ next }: { next?: string }) {
       await login(email, password);
       router.push(destination);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.auth.login.error);
+      setError(errorMessage(err, t, locale, t.auth.login.error));
     } finally {
       setSubmitting(false);
     }

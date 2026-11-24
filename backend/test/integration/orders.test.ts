@@ -54,12 +54,12 @@ describe("checkoutListingTx", () => {
 
   it("requires a meetup time for community sales", async () => {
     const result = await checkoutListingTx({ listingId: await insertListing(seller), buyerId: buyer });
-    expect(result).toEqual({ ok: false, reason: "Suggest a date and time to meet the seller" });
+    expect(result).toEqual({ ok: false, reason: "meetup_time_required" });
   });
 
   it("doesn't let sellers buy their own listing", async () => {
     const result = await checkoutListingTx({ listingId: await insertListing(seller), buyerId: seller, meetupAt: tomorrow() });
-    expect(result).toEqual({ ok: false, reason: "You cannot buy your own listing" });
+    expect(result).toEqual({ ok: false, reason: "cannot_buy_own_listing" });
   });
 
   it("refuses listings that are sold out or unknown", async () => {
@@ -68,14 +68,14 @@ describe("checkoutListingTx", () => {
       buyerId: buyer,
       meetupAt: tomorrow(),
     });
-    expect(soldOut).toEqual({ ok: false, reason: "This listing is no longer available" });
+    expect(soldOut).toEqual({ ok: false, reason: "listing_unavailable" });
 
     const unknown = await checkoutListingTx({
       listingId: "00000000-0000-4000-8000-000000000000",
       buyerId: buyer,
       meetupAt: tomorrow(),
     });
-    expect(unknown).toEqual({ ok: false, reason: "Listing not found" });
+    expect(unknown).toEqual({ ok: false, reason: "listing_not_found" });
   });
 
   it("only lets the winning bidder check out an auction, at the winning bid", async () => {
@@ -83,7 +83,7 @@ describe("checkoutListingTx", () => {
     const listingId = await insertListing(seller, { type: "auction", currentBid: 55, maxBidderId: buyer });
 
     const loser = await checkoutListingTx({ listingId, buyerId: other, meetupAt: tomorrow() });
-    expect(loser).toEqual({ ok: false, reason: "Only the winning bidder can check out this auction" });
+    expect(loser).toEqual({ ok: false, reason: "only_winning_bidder" });
 
     const order = await findOrderById(await buy(listingId));
     expect(order?.price).toBe("55.00");
@@ -191,7 +191,7 @@ describe("confirmDelivery", () => {
     expect(await confirmDelivery(orderId, buyer)).toMatchObject({
       ok: false,
       status: 409,
-      reason: "Agree on the meetup time before confirming the handoff",
+      reason: "meetup_not_agreed",
     });
   });
 
@@ -298,7 +298,7 @@ describe("reviewOrder", () => {
     await confirmDelivery(orderId, seller);
     expect(await reviewOrder({ ...input, userId: seller })).toMatchObject({ ok: false, status: 403 });
     expect(await reviewOrder(input)).toEqual({ ok: true });
-    expect(await reviewOrder(input)).toMatchObject({ ok: false, status: 409, reason: "You already rated this order" });
+    expect(await reviewOrder(input)).toMatchObject({ ok: false, status: 409, reason: "already_rated" });
     expect((await findOrderById(orderId))?.review_rating).toBe(5);
   });
 });

@@ -1,4 +1,5 @@
 import type {
+  ApiErrorCode,
   CreditTransactionType,
   ListingCategory,
   ListingCondition,
@@ -528,6 +529,97 @@ export const enUS = {
     } satisfies Record<CreditTransactionType, string>,
     withdrawalTo: (pixKey: string) => `To ${pixKey}`,
   },
+
+  // Notification text built from the server's type + params. Amounts arrive
+  // already formatted for the locale; message bodies are the sender's own text.
+  notification: {
+    sold: (title: string) => `${title} sold!`,
+    soldBodyStore: "Your item was purchased.",
+    soldBodyHeld:
+      "Your item was purchased and the payment is held by MyVizo. Review the buyer's suggested meetup time.",
+    newBid: (title: string) => `New bid on ${title}`,
+    newBidBody: (amount: string) => `Someone bid ${amount}.`,
+    listingMessage: (title: string) => `New message on ${title}`,
+    orderMessage: (name: string, title: string) =>
+      `${name} sent you a message about ${title}`,
+    deliveryConfirmed: (title: string) => `${title}: confirm the handoff`,
+    deliveryConfirmedBody: (name: string) =>
+      `${name} confirmed the handoff. Confirm it too to complete the order.`,
+    orderCompleted: (title: string) => `${title} delivered`,
+    orderCompletedBody: (name: string) => `${name} marked this order as delivered.`,
+    paymentReleased: "Payment released",
+    paymentReleasedBody: (amount: string, title: string) =>
+      `${amount} in credits from ${title} were added to your wallet.`,
+    meetupProposed: (title: string) => `New meetup time for ${title}`,
+    meetupProposedBody: (name: string) =>
+      `${name} suggested another time to meet. Accept it or suggest a different one.`,
+    meetupConfirmed: (title: string) => `Meetup confirmed for ${title}`,
+    meetupConfirmedBody: (name: string) => `${name} accepted the meetup time.`,
+    orderCancelled: (title: string) => `${title} order cancelled`,
+    orderCancelledByBuyer: (name: string) =>
+      `${name} cancelled the order. Your item is back on sale.`,
+    orderCancelledBySeller: (name: string) =>
+      `${name} cancelled the order. Your payment was refunded.`,
+  },
+
+  // Server errors by code. bidTooLow/orderAlreadyStatus get their value
+  // already formatted for the locale.
+  errors: {
+    not_authenticated: "Please sign in to continue.",
+    not_allowed: "You're not allowed to do this.",
+    not_found: "Not found.",
+    invalid_request: "Some of the information is invalid. Check it and try again.",
+    internal_error: "Something went wrong. Please try again.",
+    admin_only: "Only admins can do this.",
+    email_taken: "An account with this email already exists.",
+    invalid_credentials: "Invalid email or password.",
+    user_not_found: "User not found.",
+    choose_condominium: "Choose a condominium from the list.",
+    condominium_exists_choose: "This condominium is already on the list; choose it there.",
+    condominium_exists: "This condominium is already on the list.",
+    condominium_not_found: "Condominium not found.",
+    admin_email_not_found: "No account with this email. Ask them to sign up first.",
+    cannot_remove_own_admin: "You can't remove your own admin access.",
+    cep_invalid: "CEP must have 8 digits.",
+    cep_unavailable: "CEP lookup is unavailable.",
+    cep_not_found: "CEP not found.",
+    listing_not_found: "Listing not found.",
+    listing_not_found_or_not_owner: "Listing not found, or you don't own it.",
+    sign_in_to_see_listings: "Sign in to see your community's listings.",
+    tv_account_no_community: "TV store accounts don't have a building community.",
+    building_required_to_list: "Add a building to your profile to list items in a community.",
+    store_not_found: "Store not found.",
+    store_products_admin_only: "Only admins can add products to a store.",
+    store_product_not_restockable: "Store product not found, or it can't be restocked.",
+    store_no_questions: "Store products don't take questions.",
+    cannot_bid_own_listing: "You cannot bid on your own listing.",
+    auction_not_active: "This listing is not an active auction.",
+    auction_ended: "This auction has ended.",
+    bid_too_low: (amount: string) => `Bid must be greater than ${amount}.`,
+    cannot_buy_own_listing: "You cannot buy your own listing.",
+    listing_unavailable: "This listing is no longer available.",
+    only_winning_bidder: "Only the winning bidder can check out this auction.",
+    meetup_time_required: "Suggest a date and time to meet the seller.",
+    order_not_found: "Order not found.",
+    order_participants_only: "Only the buyer or seller can update this order.",
+    order_chat_participants_only: "Only the buyer or seller can see this conversation.",
+    order_already_status: (status: string) => `This order is already ${status}.`,
+    order_cancelled: "This order was cancelled.",
+    delivery_already_confirmed: "You already confirmed this delivery.",
+    meetup_not_agreed: "Agree on the meetup time before confirming the handoff.",
+    store_order_no_meetup: "Store orders are delivered, not picked up.",
+    no_meetup_proposed: "No meetup time has been proposed.",
+    meetup_already_confirmed: "The meetup is already confirmed.",
+    waiting_other_side_meetup: "Waiting for the other side to accept your proposed time.",
+    store_order_no_cancel: "Store orders can't be cancelled here.",
+    handoff_already_confirmed: "The handoff was already confirmed, so this order can't be cancelled.",
+    meetup_agreed_ask_seller: "The meetup is already agreed. Ask the seller to cancel.",
+    only_buyer_can_rate: "Only the buyer can rate this seller.",
+    rate_after_delivery: "You can rate the seller once the order is delivered.",
+    already_rated: "You already rated this order.",
+    insufficient_credits: "You don't have enough credits for this withdrawal.",
+    notification_not_found: "Notification not found.",
+  } satisfies Record<ApiErrorCode, string | ((value: string) => string)>,
 
   rate: {
     title: (name: string) => `Rate ${name}`,

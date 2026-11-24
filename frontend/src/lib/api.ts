@@ -3,6 +3,7 @@
 // cookie automatically — no token handling in JS.
 
 import type {
+  ApiErrorCode,
   Bid,
   DeliveryAddress,
   Listing,
@@ -23,9 +24,14 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  // Set by the API so the UI can show the error in the user's language.
+  code?: ApiErrorCode;
+  params?: Record<string, string | number>;
+  constructor(message: string, status: number, code?: ApiErrorCode, params?: Record<string, string | number>) {
     super(message);
     this.status = status;
+    this.code = code;
+    this.params = params;
   }
 }
 
@@ -41,7 +47,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new ApiError(body?.message ?? res.statusText, res.status);
+    throw new ApiError(body?.message ?? res.statusText, res.status, body?.code, body?.params);
   }
 
   if (res.status === 204) return undefined as T;

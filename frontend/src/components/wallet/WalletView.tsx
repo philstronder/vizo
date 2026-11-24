@@ -10,6 +10,7 @@ import { Modal } from "@/components/ui/Modal";
 import { currencySymbol, formatCurrency, formatDate } from "@/lib/format";
 import type { Wallet } from "@/types";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 
 export function WalletView() {
   const { locale, t } = useI18n();
@@ -134,7 +135,7 @@ function WithdrawModal({
       onWithdrawn(await withdrawCredits(value, pixKey.trim()), value);
       setAmount("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.wallet.withdrawError);
+      setError(errorMessage(err, t, locale, t.wallet.withdrawError));
     } finally {
       setSubmitting(false);
     }

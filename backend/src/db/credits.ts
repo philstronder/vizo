@@ -1,5 +1,6 @@
 import type { PoolClient } from "pg";
 import { pool } from "./pool";
+import type { ErrorCode, ErrorParams } from "../lib/http-error";
 
 export type CreditType = "sale" | "purchase" | "refund" | "withdrawal";
 
@@ -85,14 +86,14 @@ export async function withdrawCredits(input: {
   userId: string;
   amount: number;
   pixKey: string;
-}): Promise<{ ok: true } | { ok: false; reason: string }> {
+}): Promise<{ ok: true } | { ok: false; reason: ErrorCode }> {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     const balance = await lockBalance(client, input.userId);
     if (toCents(input.amount) > toCents(balance)) {
       await client.query("ROLLBACK");
-      return { ok: false, reason: "You don't have enough credits for this withdrawal" };
+      return { ok: false, reason: "insufficient_credits" };
     }
     await addCreditTransaction(client, {
       userId: input.userId,

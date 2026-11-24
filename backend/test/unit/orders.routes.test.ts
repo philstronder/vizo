@@ -98,7 +98,7 @@ describe("POST /api/orders (checkout)", () => {
   });
 
   it("checks the buyer can see the listing before buying", async () => {
-    vi.mocked(findViewableListing).mockRejectedValue(notFound("Listing not found"));
+    vi.mocked(findViewableListing).mockRejectedValue(notFound("listing_not_found"));
     const res = await checkout({ listingId: LISTING_ID, meetupAt: future() });
     expect(res.status).toBe(404);
     expect(checkoutListingTx).not.toHaveBeenCalled();
@@ -116,10 +116,10 @@ describe("POST /api/orders (checkout)", () => {
   });
 
   it("answers 400 with the reason when the listing can't be bought", async () => {
-    vi.mocked(checkoutListingTx).mockResolvedValue({ ok: false, reason: "You cannot buy your own listing" });
+    vi.mocked(checkoutListingTx).mockResolvedValue({ ok: false, reason: "cannot_buy_own_listing" });
     const res = await checkout({ listingId: LISTING_ID, meetupAt: future() });
     expect(res.status).toBe(400);
-    expect(res.body.message).toBe("You cannot buy your own listing");
+    expect(res.body).toMatchObject({ code: "cannot_buy_own_listing", message: "You cannot buy your own listing" });
     expect(createNotification).not.toHaveBeenCalled();
   });
 });
@@ -151,10 +151,10 @@ describe("PATCH /api/orders/:id/complete", () => {
   });
 
   it("passes on the status of a refused confirmation", async () => {
-    vi.mocked(confirmDelivery).mockResolvedValue({ ok: false, status: 409, reason: "You already confirmed this delivery" });
+    vi.mocked(confirmDelivery).mockResolvedValue({ ok: false, status: 409, reason: "delivery_already_confirmed" });
     const res = await complete(BUYER_ID);
     expect(res.status).toBe(409);
-    expect(res.body.message).toBe("You already confirmed this delivery");
+    expect(res.body).toMatchObject({ code: "delivery_already_confirmed", message: "You already confirmed this delivery" });
     expect(createNotification).not.toHaveBeenCalled();
   });
 });
@@ -290,6 +290,6 @@ describe("error handling", () => {
     vi.mocked(findOrderById).mockRejectedValue(new Error("connection lost to db-host-1"));
     const res = await request(app).get(`/api/orders/${ORDER_ID}/messages`).set("Cookie", authCookie(BUYER_ID));
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ message: "Internal server error" });
+    expect(res.body).toEqual({ code: "internal_error", message: "Internal server error" });
   });
 });

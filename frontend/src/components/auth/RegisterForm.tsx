@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 import { safeNext, useStoreMode } from "@/lib/store-mode";
 import { Camera, ShieldCheck } from "lucide-react";
 import { ViewerRegisterForm } from "./ViewerRegisterForm";
@@ -33,7 +34,7 @@ function ResidentRegisterForm({ next }: { next?: string }) {
   const router = useRouter();
   const destination = safeNext(next) ?? "/";
   const { register } = useAuth();
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState("");
@@ -76,7 +77,7 @@ function ResidentRegisterForm({ next }: { next?: string }) {
       });
       router.push(destination);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.auth.register.error);
+      setError(errorMessage(err, t, locale, t.auth.register.error));
     } finally {
       setSubmitting(false);
     }

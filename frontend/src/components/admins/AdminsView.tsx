@@ -10,9 +10,10 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Field";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 
 export function AdminsView() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const { user } = useAuth();
   const [admins, setAdmins] = useState<AuthUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,7 +46,7 @@ export function AdminsView() {
       );
       setEmail("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.admins.addError);
+      setError(errorMessage(err, t, locale, t.admins.addError));
     } finally {
       setAdding(false);
     }
@@ -58,7 +59,7 @@ export function AdminsView() {
       await removeAdmin(admin.id);
       setAdmins((prev) => prev.filter((a) => a.id !== admin.id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.admins.removeError);
+      setError(errorMessage(err, t, locale, t.admins.removeError));
     }
   }
 

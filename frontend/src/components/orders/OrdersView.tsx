@@ -18,6 +18,7 @@ import { OrderHandoff } from "./OrderHandoff";
 import { OrderChat } from "./OrderChat";
 import { PlaceholderImage } from "@/components/listings/PlaceholderImage";
 import { formatCurrency, formatDate, formatRelativeTime } from "@/lib/format";
+import { notificationText } from "@/lib/notification-text";
 import type { Notification, NotificationType, Order, OrderStatus } from "@/types";
 import {
   Bell,
@@ -39,6 +40,7 @@ import {
 import { formatAddress } from "@/components/account/DeliveryAddressFields";
 import Link from "next/link";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 
 const statusTone: Record<OrderStatus, "success" | "info" | "neutral" | "danger"> = {
   pending_pickup: "info",
@@ -91,7 +93,7 @@ function OrderRow({
     try {
       onUpdated(await completeOrder(order.id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.orders.updateError);
+      setError(errorMessage(err, t, locale, t.orders.updateError));
     } finally {
       setCompleting(false);
     }
@@ -174,8 +176,9 @@ function NotificationRow({
   notification: Notification;
   onRead: (id: string) => void;
 }) {
-  const { locale } = useI18n();
+  const { t, locale } = useI18n();
   const Icon = notificationIcon[notification.type];
+  const { title, body } = notificationText(notification, t, locale);
   const content = (
     <div
       className={`flex items-start gap-3 rounded-lg px-2 py-2.5 ${
@@ -186,8 +189,8 @@ function NotificationRow({
         <Icon size={14} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-ink line-clamp-1">{notification.title}</p>
-        <p className="text-xs text-ink-400 line-clamp-2">{notification.body}</p>
+        <p className="text-sm font-semibold text-ink line-clamp-1">{title}</p>
+        <p className="text-xs text-ink-400 line-clamp-2">{body}</p>
         <p className="mt-0.5 text-[11px] text-ink-400">{formatRelativeTime(notification.createdAt, locale)}</p>
       </div>
       {!notification.read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-500" />}

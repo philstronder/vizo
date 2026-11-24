@@ -14,6 +14,7 @@ import {
 } from "@/components/account/DeliveryAddressFields";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 import { safeNext, storeHref } from "@/lib/store-mode";
 
 // Sign-up for TV show viewers, reached from a store: no building or proof of
@@ -22,7 +23,7 @@ export function ViewerRegisterForm({ storeId, next }: { storeId: string; next?: 
   const router = useRouter();
   const destination = safeNext(next) ?? storeHref(storeId);
   const { register } = useAuth();
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -51,7 +52,7 @@ export function ViewerRegisterForm({ storeId, next }: { storeId: string; next?: 
       });
       router.push(destination);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.auth.viewerRegister.error);
+      setError(errorMessage(err, t, locale, t.auth.viewerRegister.error));
     } finally {
       setSubmitting(false);
     }
