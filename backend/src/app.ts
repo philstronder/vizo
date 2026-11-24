@@ -13,6 +13,8 @@ import { adminsRouter } from "./routes/admins.routes";
 import { condominiumsRouter } from "./routes/condominiums.routes";
 import { cepRouter } from "./routes/cep.routes";
 import { walletRouter } from "./routes/wallet.routes";
+import { buildingAdminsRouter } from "./routes/building-admins.routes";
+import { residencyRouter } from "./routes/residency.routes";
 
 export const app = express();
 
@@ -35,6 +37,8 @@ app.use("/api/admins", adminsRouter);
 app.use("/api/condominiums", condominiumsRouter);
 app.use("/api/cep", cepRouter);
 app.use("/api/wallet", walletRouter);
+app.use("/api/building-admins", buildingAdminsRouter);
+app.use("/api/residency-requests", residencyRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

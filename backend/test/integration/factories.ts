@@ -19,6 +19,23 @@ export async function insertUser(overrides: { name?: string; buildingName?: stri
   return rows[0].id;
 }
 
+// A resident who signed up and is waiting for their proof of residency to be reviewed.
+export async function insertPendingResident(buildingName = "Aurora", name?: string) {
+  const id = await insertUser({ name, buildingName });
+  await pool.query(
+    `UPDATE users SET verified = FALSE, verification_photo_key = $2, verification_submitted_at = now() WHERE id = $1`,
+    [id, PROOF_PHOTO]
+  );
+  return id;
+}
+
+export const PROOF_PHOTO = "data:image/jpeg;base64,/9j/4AAQSkZJRg==";
+
+export async function insertCondominium(name = "Aurora") {
+  const { rows } = await pool.query<{ id: string }>("INSERT INTO condominiums (name) VALUES ($1) RETURNING id", [name]);
+  return rows[0].id;
+}
+
 export async function insertStore(adminId: string) {
   const { rows } = await pool.query<{ id: string }>(
     "INSERT INTO stores (name, created_by) VALUES ('TV Store', $1) RETURNING id",

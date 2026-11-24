@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 
 // Admin-only stock panel under a store product: shows the units left and adds
 // more, which re-publishes the product once it has sold out.
@@ -18,7 +19,7 @@ export function StoreProductStock({
   listing: Listing;
   onRestocked: (listing: Listing) => void;
 }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [units, setUnits] = useState<number | "">("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +33,7 @@ export function StoreProductStock({
       onRestocked(await restockListing(listing.id, Number(units)));
       setUnits("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.store.restockError);
+      setError(errorMessage(err, t, locale, t.store.restockError));
     } finally {
       setSaving(false);
     }

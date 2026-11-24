@@ -56,9 +56,9 @@ describe("POST /api/wallet/withdraw", () => {
   });
 
   it("passes on an insufficient balance as 400", async () => {
-    vi.mocked(withdrawCredits).mockResolvedValue({ ok: false, reason: "Not enough" });
+    vi.mocked(withdrawCredits).mockResolvedValue({ ok: false, reason: "insufficient_credits" });
     const res = await withdraw({ amount: 1000, pixKey: "k" });
     expect(res.status).toBe(400);
-    expect(res.body.message).toBe("Not enough");
+    expect(res.body).toMatchObject({ code: "insufficient_credits", message: "You don't have enough credits for this withdrawal" });
   });
 });

@@ -1,11 +1,13 @@
 import { Router, type Response } from "express";
 import { z } from "zod";
-import { createUser, findUserByEmail, findUserById, sameBuilding, toPublicUser, updateUser } from "../db/users";
+import { createUser, findUserByEmail, findUserById, sameBuilding, updateUser } from "../db/users";
+import { resubmitResidencyProof } from "../db/residency";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { AUTH_COOKIE_MAX_AGE_MS, AUTH_COOKIE_NAME, signAuthToken } from "../lib/jwt";
 import { createCondominium, findCondominiumByName } from "../db/condominiums";
-import { condominiumSchema, deliveryAddressSchema } from "../lib/schemas";
+import { condominiumSchema, deliveryAddressSchema, proofPhotoSchema } from "../lib/schemas";
 import { badRequest, conflict, notFound, unauthorized } from "../lib/http-error";
+import { notifyResidencySubmitted, toSessionUser } from "../lib/residency";
 import { requireAuth } from "../middleware/auth";
 import { env } from "../lib/env";
 
@@ -39,6 +41,9 @@ const registerSchema = z.discriminatedUnion("accountType", [
     buildingName: z.string().trim().min(1, "Building name is required").optional(),
     newCondominium: condominiumSchema.optional(),
     buildingBlock: z.string().trim().optional(),
+    // Reviewed by the condominium's building admins before the resident can
+    // use their community.
+    proofPhoto: proofPhotoSchema,
   }),
   z.object({
     accountType: z.literal("viewer"),
@@ -54,7 +59,7 @@ authRouter.post("/register", async (req, res, next) => {
   try {
     const input = registerSchema.parse({ accountType: "resident", ...req.body });
     const existing = await findUserByEmail(input.email);
-    if (existing) throw conflict("An account with this email already exists");
+    if (existing) throw conflict("email_taken");
 
     // Residents pick from the admin-maintained list, or add their condominium
     // when it's missing. Store the list's exact name so everyone in the
@@ -64,11 +69,11 @@ authRouter.post("/register", async (req, res, next) => {
       if (input.newCondominium) {
         const { name, address } = input.newCondominium;
         const created = await createCondominium(name, address);
-        if (!created) throw conflict("This condominium is already on the list; choose it there");
+        if (!created) throw conflict("condominium_exists_choose");
         buildingName = created.name;
       } else {
         const condominium = input.buildingName ? await findCondominiumByName(input.buildingName) : null;
-        if (!condominium) throw badRequest("Choose a condominium from the list");
+        if (!condominium) throw badRequest("choose_condominium");
         buildingName = condominium.name;
       }
     }
@@ -80,11 +85,17 @@ authRouter.post("/register", async (req, res, next) => {
       passwordHash,
       ...(input.accountType === "viewer"
         ? { phone: input.phone, deliveryAddress: input.deliveryAddress }
-        : { buildingName, buildingBlock: input.buildingBlock, unitNumber: input.unitNumber }),
+        : {
+            buildingName,
+            buildingBlock: input.buildingBlock,
+            unitNumber: input.unitNumber,
+            proofPhoto: input.proofPhoto,
+          }),
     });
+    if (input.accountType === "resident") await notifyResidencySubmitted(user);
 
     setAuthCookie(res, user.id);
-    res.status(201).json(toPublicUser(user));
+    res.status(201).json(await toSessionUser(user));
   } catch (err) {
     next(err);
   }
@@ -99,13 +110,13 @@ authRouter.post("/login", async (req, res, next) => {
   try {
     const input = loginSchema.parse(req.body);
     const user = await findUserByEmail(input.email);
-    if (!user) throw unauthorized("Invalid email or password");
+    if (!user) throw unauthorized("invalid_credentials");
 
     const valid = await verifyPassword(input.password, user.password_hash);
-    if (!valid) throw unauthorized("Invalid email or password");
+    if (!valid) throw unauthorized("invalid_credentials");
 
     setAuthCookie(res, user.id);
-    res.json(toPublicUser(user));
+    res.json(await toSessionUser(user));
   } catch (err) {
     next(err);
   }
@@ -119,8 +130,8 @@ authRouter.post("/logout", (_req, res) => {
 authRouter.get("/me", requireAuth, async (req, res, next) => {
   try {
     const user = await findUserById(req.userId!);
-    if (!user) throw notFound("User not found");
-    res.json(toPublicUser(user));
+    if (!user) throw notFound("user_not_found");
+    res.json(await toSessionUser(user));
   } catch (err) {
     next(err);
   }
@@ -137,6 +148,8 @@ const updateMeSchema = z
     buildingBlock: z.string().trim().optional(),
     phone: phoneSchema.optional(),
     deliveryAddress: deliveryAddressSchema.optional(),
+    // Required when joining or moving to another building.
+    proofPhoto: proofPhotoSchema.optional(),
   })
   .refine((data) => (data.buildingName === undefined) === (data.unitNumber === undefined), {
     message: "Building name and unit number go together",
@@ -145,24 +158,47 @@ const updateMeSchema = z
 
 authRouter.patch("/me", requireAuth, async (req, res, next) => {
   try {
-    const input = updateMeSchema.parse(req.body);
+    const { proofPhoto, ...input } = updateMeSchema.parse(req.body);
     // Communities are matched by condominium name, so it has to come from the
     // admin list (stored with the list's spelling). Keeping the current one is
     // always allowed, even if admins have since removed it from the list.
+    // Joining or moving to another building needs a new proof of residency.
+    let changingBuilding = false;
     if (input.buildingName !== undefined) {
       const current = await findUserById(req.userId!);
-      if (!current) throw notFound("User not found");
+      if (!current) throw notFound("user_not_found");
       if (!sameBuilding(current.building_name, input.buildingName)) {
         const condominium = await findCondominiumByName(input.buildingName);
-        if (!condominium) throw badRequest("Choose a condominium from the list");
+        if (!condominium) throw badRequest("choose_condominium");
+        if (!proofPhoto) throw badRequest("residency_proof_required");
         input.buildingName = condominium.name;
+        changingBuilding = true;
       } else {
         input.buildingName = current.building_name!;
       }
     }
-    const user = await updateUser(req.userId!, input);
-    if (!user) throw notFound("User not found");
-    res.json(toPublicUser(user));
+    const user = await updateUser(req.userId!, { ...input, proofPhoto: changingBuilding ? proofPhoto : undefined });
+    if (!user) throw notFound("user_not_found");
+    if (changingBuilding) await notifyResidencySubmitted(user);
+    res.json(await toSessionUser(user));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Sends a new proof of residency after a rejection, or replaces the one
+// waiting for review.
+authRouter.put("/me/residency-proof", requireAuth, async (req, res, next) => {
+  try {
+    const { proofPhoto } = z.object({ proofPhoto: proofPhotoSchema }).parse(req.body);
+    const user = await resubmitResidencyProof(req.userId!, proofPhoto);
+    if (!user) {
+      const current = await findUserById(req.userId!);
+      if (!current) throw notFound("user_not_found");
+      throw badRequest(current.building_name === null ? "tv_account_no_community" : "residency_already_verified");
+    }
+    await notifyResidencySubmitted(user);
+    res.json(await toSessionUser(user));
   } catch (err) {
     next(err);
   }

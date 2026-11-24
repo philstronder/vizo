@@ -13,6 +13,7 @@ import { Check, Gavel, Tag } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { currencySymbol } from "@/lib/format";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 import { storeHref } from "@/lib/store-mode";
 
 export function CreateListingFlow({ storeId }: { storeId?: string }) {
@@ -63,7 +64,7 @@ export function CreateListingFlow({ storeId }: { storeId?: string }) {
       });
       router.push(storeId ? storeHref(storeId) : `/listing/${listing.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.sell.error);
+      setError(errorMessage(err, t, locale, t.sell.error));
       setPublishing(false);
     }
   }

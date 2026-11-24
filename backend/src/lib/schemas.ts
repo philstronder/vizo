@@ -18,3 +18,11 @@ export const condominiumSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   address: deliveryAddressSchema.omit({ complement: true }),
 });
+
+// A photo of a utility bill, lease or ID, sent as an image data URL until
+// object storage exists (see lib/image.ts in the frontend). Downscaled by the
+// browser first, so this is generous.
+export const proofPhotoSchema = z
+  .string()
+  .regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/, "Proof of residency must be an image")
+  .max(8_000_000, "Proof of residency photo is too large");

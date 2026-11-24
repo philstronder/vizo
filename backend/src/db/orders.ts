@@ -2,6 +2,7 @@ import type { PoolClient } from "pg";
 import { pool } from "./pool";
 import { toDeliveryAddress, type UserRow } from "./users";
 import { addCreditTransaction, lockBalance, toCents } from "./credits";
+import type { ErrorCode, ErrorParams } from "../lib/http-error";
 
 // The buyer's address_* columns are joined in for store order deliveries.
 export interface OrderRow
@@ -30,6 +31,9 @@ export interface OrderRow
   pickup_time: string | null;
   created_at: Date;
   review_rating: number | null;
+  buyer_review_rating: number | null;
+  buyer_rating: string | null; // avg() is numeric, read as text; null with no reviews
+  buyer_review_count: string;
   store_id: string | null;
   buyer_phone: string | null;
   payment_status: "held" | "released" | "refunded" | null;
@@ -54,6 +58,9 @@ const ORDER_SELECT = `
     buyer.name AS buyer_name,
     seller.name AS seller_name,
     r.rating AS review_rating,
+    br.rating AS buyer_review_rating,
+    (SELECT avg(x.rating) FROM buyer_reviews x WHERE x.buyer_id = o.buyer_id) AS buyer_rating,
+    (SELECT count(*) FROM buyer_reviews x WHERE x.buyer_id = o.buyer_id) AS buyer_review_count,
     l.store_id,
     buyer.phone AS buyer_phone,
     buyer.address_postal_code,
@@ -68,6 +75,7 @@ const ORDER_SELECT = `
   JOIN users buyer ON buyer.id = o.buyer_id
   JOIN users seller ON seller.id = o.seller_id
   LEFT JOIN seller_reviews r ON r.order_id = o.id
+  LEFT JOIN buyer_reviews br ON br.order_id = o.id
 `;
 
 // Store products are delivered, so their orders carry the buyer's phone and
@@ -89,6 +97,9 @@ export function toApiOrder(row: OrderRow) {
     pickupTime: row.pickup_time ?? undefined,
     createdAt: row.created_at.toISOString(),
     reviewRating: row.review_rating ?? undefined,
+    buyerReviewRating: row.buyer_review_rating ?? undefined,
+    buyerRating: row.buyer_rating !== null ? Number(row.buyer_rating) : undefined,
+    buyerReviewCount: Number(row.buyer_review_count),
     buyerPhone: row.store_id ? (row.buyer_phone ?? undefined) : undefined,
     deliveryAddress: row.store_id ? toDeliveryAddress(row) : undefined,
     isStoreOrder: !!row.store_id,
@@ -135,7 +146,7 @@ export interface CreateOrderInput {
 // buyer's credits pay as much of the price as they cover.
 export async function checkoutListingTx(
   input: CreateOrderInput
-): Promise<{ ok: true; orderId: string } | { ok: false; reason: string }> {
+): Promise<{ ok: true; orderId: string } | { ok: false; reason: ErrorCode }> {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -156,25 +167,25 @@ export async function checkoutListingTx(
     const listing = rows[0];
     if (!listing) {
       await client.query("ROLLBACK");
-      return { ok: false, reason: "Listing not found" };
+      return { ok: false, reason: "listing_not_found" };
     }
     if (listing.seller_id === input.buyerId) {
       await client.query("ROLLBACK");
-      return { ok: false, reason: "You cannot buy your own listing" };
+      return { ok: false, reason: "cannot_buy_own_listing" };
     }
     if (listing.status !== "active" || listing.quantity < 1) {
       await client.query("ROLLBACK");
-      return { ok: false, reason: "This listing is no longer available" };
+      return { ok: false, reason: "listing_unavailable" };
     }
     if (listing.type === "auction" && listing.max_bidder_id !== input.buyerId) {
       await client.query("ROLLBACK");
-      return { ok: false, reason: "Only the winning bidder can check out this auction" };
+      return { ok: false, reason: "only_winning_bidder" };
     }
 
     const isCommunitySale = !listing.store_id;
     if (isCommunitySale && !input.meetupAt) {
       await client.query("ROLLBACK");
-      return { ok: false, reason: "Suggest a date and time to meet the seller" };
+      return { ok: false, reason: "meetup_time_required" };
     }
 
     const price = Number(listing.type === "auction" ? listing.current_bid : listing.price);
@@ -234,10 +245,17 @@ export async function findOrderById(id: string): Promise<OrderRow | null> {
 
 type OrderResult<T> =
   | { ok: true; order: OrderRow; value: T }
-  | { ok: false; status: 403 | 404 | 409; reason: string };
+  | { ok: false; status: 403 | 404 | 409; reason: ErrorCode; params?: ErrorParams };
 
 // Thrown inside withLockedOrder to roll back and answer 409.
-class OrderConflict extends Error {}
+class OrderConflict extends Error {
+  constructor(
+    readonly code: ErrorCode,
+    readonly params?: ErrorParams
+  ) {
+    super(code);
+  }
+}
 
 // Runs fn on the order with its row locked, after checking that userId is the
 // buyer or the seller, and returns the updated order.
@@ -253,11 +271,11 @@ async function withLockedOrder<T>(
     const order = rows[0];
     if (!order) {
       await client.query("ROLLBACK");
-      return { ok: false, status: 404, reason: "Order not found" };
+      return { ok: false, status: 404, reason: "order_not_found" };
     }
     if (order.buyer_id !== userId && order.seller_id !== userId) {
       await client.query("ROLLBACK");
-      return { ok: false, status: 403, reason: "Only the buyer or seller can update this order" };
+      return { ok: false, status: 403, reason: "order_participants_only" };
     }
     const value = await fn(client, order);
     await client.query("COMMIT");
@@ -265,36 +283,50 @@ async function withLockedOrder<T>(
     return { ok: true, order: updated!, value };
   } catch (err) {
     await client.query("ROLLBACK");
-    if (err instanceof OrderConflict) return { ok: false, status: 409, reason: err.message };
+    if (err instanceof OrderConflict) return { ok: false, status: 409, reason: err.code, params: err.params };
     throw err;
   } finally {
     client.release();
   }
 }
 
-function conflict(reason: string): never {
-  throw new OrderConflict(reason);
+function conflict(code: ErrorCode, params?: ErrorParams): never {
+  throw new OrderConflict(code, params);
 }
 
 function assertOpen(order: OrderRow) {
-  if (!OPEN_STATUSES.includes(order.status)) conflict(`This order is already ${order.status}`);
+  if (!OPEN_STATUSES.includes(order.status)) conflict("order_already_status", { status: order.status });
 }
+
+export type HandoffReview = { rating: number; comment?: string };
 
 // Records that userId handed over (seller) or received (buyer) the item.
 // Store orders complete on the first confirmation, as before. Community
 // orders complete once both sides have confirmed, which releases the held
-// payment to the seller as credits.
-export async function confirmDelivery(orderId: string, userId: string) {
+// payment to the seller as credits. Rating the other side is mandatory on
+// community orders, so each side's confirmation carries its review: the
+// buyer's goes to seller_reviews and the seller's to buyer_reviews.
+export async function confirmDelivery(orderId: string, userId: string, review?: HandoffReview) {
   return withLockedOrder(orderId, userId, async (client, order) => {
     assertOpen(order);
     const isBuyer = order.buyer_id === userId;
     if (isBuyer ? order.buyer_confirmed_at : order.seller_confirmed_at) {
-      conflict("You already confirmed this delivery");
+      conflict("delivery_already_confirmed");
     }
 
     // The seller has to agree to a meetup time before the handoff can happen.
     if (!order.store_id && order.meetup_at && !order.meetup_confirmed) {
-      conflict("Agree on the meetup time before confirming the handoff");
+      conflict("meetup_not_agreed");
+    }
+
+    if (!order.store_id) {
+      if (!review) conflict(isBuyer ? "rate_seller_to_confirm" : "rate_buyer_to_confirm");
+      await client.query(
+        `INSERT INTO ${isBuyer ? "seller_reviews" : "buyer_reviews"} (order_id, seller_id, buyer_id, rating, comment)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (order_id) DO NOTHING`,
+        [order.id, order.seller_id, order.buyer_id, review.rating, review.comment ?? null]
+      );
     }
 
     const otherConfirmed = isBuyer ? !!order.seller_confirmed_at : !!order.buyer_confirmed_at;
@@ -324,7 +356,7 @@ export async function confirmDelivery(orderId: string, userId: string) {
 // Either side proposes a (new) meetup time; it's agreed once the other accepts.
 export async function proposeMeetup(orderId: string, userId: string, meetupAt: Date) {
   return withLockedOrder(orderId, userId, async (client, order) => {
-    if (order.store_id) conflict("Store orders are delivered, not picked up");
+    if (order.store_id) conflict("store_order_no_meetup");
     assertOpen(order);
     await client.query(
       "UPDATE orders SET meetup_at = $2, meetup_proposed_by = $3, meetup_confirmed = FALSE WHERE id = $1",
@@ -336,10 +368,10 @@ export async function proposeMeetup(orderId: string, userId: string, meetupAt: D
 export async function acceptMeetup(orderId: string, userId: string) {
   return withLockedOrder(orderId, userId, async (client, order) => {
     assertOpen(order);
-    if (!order.meetup_at) conflict("No meetup time has been proposed");
-    if (order.meetup_confirmed) conflict("The meetup is already confirmed");
+    if (!order.meetup_at) conflict("no_meetup_proposed");
+    if (order.meetup_confirmed) conflict("meetup_already_confirmed");
     if (order.meetup_proposed_by === userId) {
-      conflict("Waiting for the other side to accept your proposed time");
+      conflict("waiting_other_side_meetup");
     }
     await client.query("UPDATE orders SET meetup_confirmed = TRUE WHERE id = $1", [orderId]);
   });
@@ -352,13 +384,13 @@ export async function acceptMeetup(orderId: string, userId: string) {
 // the card part is refunded to the card (mocked).
 export async function cancelOrder(orderId: string, userId: string) {
   return withLockedOrder(orderId, userId, async (client, order) => {
-    if (order.store_id) conflict("Store orders can't be cancelled here");
+    if (order.store_id) conflict("store_order_no_cancel");
     assertOpen(order);
     if (order.buyer_confirmed_at || order.seller_confirmed_at) {
-      conflict("The handoff was already confirmed, so this order can't be cancelled");
+      conflict("handoff_already_confirmed");
     }
     if (order.buyer_id === userId && order.meetup_confirmed) {
-      conflict("The meetup is already agreed. Ask the seller to cancel");
+      conflict("meetup_agreed_ask_seller");
     }
 
     await client.query(
@@ -383,29 +415,47 @@ export async function cancelOrder(orderId: string, userId: string) {
   });
 }
 
-// Lets the buyer rate the seller once the order is completed. The UNIQUE
-// order_id constraint makes ON CONFLICT the one-review-per-order guard.
-export async function reviewOrder(input: {
-  orderId: string;
-  userId: string;
-  rating: number;
-  comment?: string;
-}): Promise<{ ok: true } | { ok: false; status: 403 | 404 | 409; reason: string }> {
+type ReviewInput = { orderId: string; userId: string; rating: number; comment?: string };
+type ReviewResult = { ok: true } | { ok: false; status: 403 | 404 | 409; reason: ErrorCode; params?: ErrorParams };
+
+// Once an order is completed, the buyer rates the seller (seller_reviews) and
+// the seller rates the buyer (buyer_reviews). The UNIQUE order_id constraint
+// makes ON CONFLICT the one-review-per-order guard.
+async function insertReview(
+  input: ReviewInput,
+  side: { table: "seller_reviews" | "buyer_reviews"; author: "buyer_id" | "seller_id"; notAuthor: ErrorCode; notCompleted: ErrorCode }
+): Promise<ReviewResult> {
   const order = await findOrderById(input.orderId);
-  if (!order) return { ok: false, status: 404, reason: "Order not found" };
-  if (order.buyer_id !== input.userId) {
-    return { ok: false, status: 403, reason: "Only the buyer can rate this seller" };
-  }
-  if (order.status !== "completed") {
-    return { ok: false, status: 409, reason: "You can rate the seller once the order is delivered" };
-  }
+  if (!order) return { ok: false, status: 404, reason: "order_not_found" };
+  if (order[side.author] !== input.userId) return { ok: false, status: 403, reason: side.notAuthor };
+  if (order.status !== "completed") return { ok: false, status: 409, reason: side.notCompleted };
 
   const { rowCount } = await pool.query(
-    `INSERT INTO seller_reviews (order_id, seller_id, buyer_id, rating, comment)
+    `INSERT INTO ${side.table} (order_id, seller_id, buyer_id, rating, comment)
      VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (order_id) DO NOTHING`,
     [order.id, order.seller_id, order.buyer_id, input.rating, input.comment ?? null]
   );
-  if (!rowCount) return { ok: false, status: 409, reason: "You already rated this order" };
+  if (!rowCount) return { ok: false, status: 409, reason: "already_rated" };
   return { ok: true };
+}
+
+// The buyer rates the seller.
+export function reviewOrder(input: ReviewInput): Promise<ReviewResult> {
+  return insertReview(input, {
+    table: "seller_reviews",
+    author: "buyer_id",
+    notAuthor: "only_buyer_can_rate",
+    notCompleted: "rate_after_delivery",
+  });
+}
+
+// The seller rates the buyer.
+export function reviewBuyer(input: ReviewInput): Promise<ReviewResult> {
+  return insertReview(input, {
+    table: "buyer_reviews",
+    author: "seller_id",
+    notAuthor: "only_seller_can_rate_buyer",
+    notCompleted: "rate_buyer_after_delivery",
+  });
 }

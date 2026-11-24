@@ -33,7 +33,7 @@ export async function requireAdmin(req: Request, _res: Response, next: NextFunct
   try {
     const user = await findUserById(req.userId);
     if (!user?.is_admin) {
-      next(forbidden("Only admins can do this"));
+      next(forbidden("admin_only"));
       return;
     }
     next();

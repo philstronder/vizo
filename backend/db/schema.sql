@@ -130,8 +130,13 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC);
+-- Values the frontend uses to render the notification in the viewer's language
+-- (title/body keep an English copy for rows created before this column).
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS params JSONB;
 
--- One rating per order, left by the buyer once the order is completed.
+-- One rating per order, left by the buyer. Mandatory on community sales,
+-- where it comes with the buyer's handoff confirmation; optional on store
+-- orders, once they're completed.
 CREATE TABLE IF NOT EXISTS seller_reviews (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id          UUID NOT NULL UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
@@ -143,6 +148,20 @@ CREATE TABLE IF NOT EXISTS seller_reviews (
 );
 
 CREATE INDEX IF NOT EXISTS idx_seller_reviews_seller ON seller_reviews(seller_id);
+
+-- The other direction: one rating per order, left by the seller (with the
+-- seller's handoff confirmation on community sales). Shown to sellers as the buyer's reputation on new orders.
+CREATE TABLE IF NOT EXISTS buyer_reviews (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id          UUID NOT NULL UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
+  seller_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  buyer_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  rating            SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment           TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_buyer_reviews_buyer ON buyer_reviews(buyer_id);
 
 -- Admins create, edit and delete stores. Promote a user with:
 --   npm run user:make-admin -- someone@example.com
@@ -278,3 +297,79 @@ CREATE TABLE IF NOT EXISTS order_messages (
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_order_messages_order ON order_messages(order_id, created_at);
+
+-- Backfills params for notifications created before the column existed, by
+-- reading them back from the English text they were stored with, so they are
+-- shown in the viewer's language too. Rows that don't match stay as they are.
+-- type is compared as text because some enum values are added in this same run.
+UPDATE notifications n SET params = p.params
+FROM (
+  SELECT id, jsonb_strip_nulls(CASE type::text
+    WHEN 'sold' THEN jsonb_build_object(
+      'listingTitle', substring(title FROM '^(.*) sold!$'),
+      'variant', CASE WHEN body = 'Your item was purchased.' THEN 'store' ELSE 'held' END)
+    WHEN 'new_bid' THEN jsonb_build_object(
+      'listingTitle', substring(title FROM '^New bid on (.*)$'),
+      'amount', substring(body FROM '^Someone bid \$([0-9.]+)\.$')::numeric)
+    WHEN 'message' THEN CASE
+      WHEN title ~ '^.* sent you a message about .*$' THEN jsonb_build_object(
+        'actorName', (regexp_match(title, '^(.*) sent you a message about (.*)$'))[1],
+        'listingTitle', (regexp_match(title, '^(.*) sent you a message about (.*)$'))[2],
+        'variant', 'order')
+      ELSE jsonb_build_object(
+        'listingTitle', substring(title FROM '^New message on (.*)$'),
+        'variant', 'listing')
+      END
+    WHEN 'delivery_confirmed' THEN jsonb_build_object(
+      'listingTitle', substring(title FROM '^(.*): confirm the handoff$'),
+      'actorName', substring(body FROM '^(.*) confirmed the handoff\.'))
+    WHEN 'order_completed' THEN jsonb_build_object(
+      'listingTitle', substring(title FROM '^(.*) delivered$'),
+      'actorName', substring(body FROM '^(.*) marked this order as delivered\.$'))
+    WHEN 'payment_released' THEN jsonb_build_object(
+      'listingTitle', (regexp_match(body, '^([0-9.]+) in credits from (.*) were added to your wallet\.$'))[2],
+      'amount', (regexp_match(body, '^([0-9.]+) in credits from (.*) were added to your wallet\.$'))[1]::numeric)
+    WHEN 'meetup_proposed' THEN jsonb_build_object(
+      'listingTitle', substring(title FROM '^New meetup time for (.*)$'),
+      'actorName', substring(body FROM '^(.*) suggested another time to meet\.'))
+    WHEN 'meetup_confirmed' THEN jsonb_build_object(
+      'listingTitle', substring(title FROM '^Meetup confirmed for (.*)$'),
+      'actorName', substring(body FROM '^(.*) accepted the meetup time\.$'))
+    WHEN 'order_cancelled' THEN jsonb_build_object(
+      'listingTitle', substring(title FROM '^(.*) order cancelled$'),
+      'actorName', substring(body FROM '^(.*) cancelled the order\.'),
+      'variant', CASE WHEN body LIKE '%Your item is back on sale.' THEN 'byBuyer' ELSE 'bySeller' END)
+  END) AS params
+  FROM notifications
+  WHERE params IS NULL
+) p
+WHERE n.id = p.id AND p.params ? 'listingTitle';
+
+-- Proof of residency. Residents send a photo of a document at sign-up (or when
+-- they move to another building) and stay unverified, without access to their
+-- community, until a building admin of their condominium (or a platform admin)
+-- approves it. A rejection keeps the reason so the resident can send a new
+-- photo. Accounts created before this review existed were verified at sign-up.
+ALTER TABLE users ALTER COLUMN verified SET DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_submitted_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_reviewed_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_rejection_reason TEXT;
+CREATE INDEX IF NOT EXISTS idx_users_pending_verification
+  ON users (lower(trim(building_name))) WHERE NOT verified AND building_name IS NOT NULL;
+
+-- Platform admins nominate building admins, who review the proofs of
+-- residency sent by people signing up to their condominium. Someone can look
+-- after several condominiums, and needn't live in them (e.g. a property manager).
+CREATE TABLE IF NOT EXISTS building_admins (
+  user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  condominium_id    UUID NOT NULL REFERENCES condominiums(id) ON DELETE CASCADE,
+  created_by        UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, condominium_id)
+);
+CREATE INDEX IF NOT EXISTS idx_building_admins_condominium ON building_admins(condominium_id);
+
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'residency_submitted';
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'residency_approved';
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'residency_rejected';

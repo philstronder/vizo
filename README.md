@@ -31,8 +31,10 @@ echo "NEXT_PUBLIC_API_URL=http://localhost:4000" > .env.local
 npm run dev              # http://localhost:3000
 ```
 
-Register an account at `/register` (address verification is a mocked file
-picker — any image "uploads" instantly) and you're in.
+Register an account at `/register` with a photo of any document as proof of
+residency. New residents wait for review before they can use their community
+(see [Building admins](#building-admins)). Locally, make yourself an admin
+(below) and approve your own test accounts at `/verifications`.
 
 ## Tests
 
@@ -65,7 +67,8 @@ test, so your dev data is never touched. Point them elsewhere with
 - **Backend integration** (`backend/test/integration`): accounts, listings
   and the feed, bidding (including simultaneous bids), Q&A, checkout, escrow,
   meetups, handoffs, cancellations, credits, withdrawals, order chat,
-  notifications, stores, admins and condominiums, plus who may see or change
+  notifications, stores, admins, condominiums, building admins and residency
+  review, plus who may see or change
   what.
 - **Backend unit** (`backend/test/unit`): route validation and error handling
   with the database mocked, and helpers such as the listing access rule.
@@ -128,6 +131,23 @@ Admins add and remove other admins at `/admins`. To create the first admin
 cd backend
 npm run user:make-admin -- someone@example.com   # add --revoke to undo
 ```
+
+## Building admins
+
+Residents prove they live in their condominium with a photo of a utility bill,
+lease or ID at sign-up, and again when they move to another building in their
+profile. Until it's approved they can't see, list, bid on or buy their
+community's listings.
+
+Platform admins nominate **building admins** per condominium in the
+"Building admins" section of `/admins` (the person needs an account; they
+don't have to live there, e.g. a property manager). Building admins get a
+notification for each new request and review them at `/verifications`:
+approve, or reject with a reason the resident sees before sending a new
+photo. Platform admins can review every building's requests, which covers
+condominiums with no building admin yet (such as one added at sign-up); those
+requests notify the platform admins instead. The photo is deleted once a
+request is reviewed.
 
 Set `NEXT_PUBLIC_APP_URL` in the frontend (e.g. `https://vizo.app`) so QR
 codes always point at the public site, even when generated from another host.

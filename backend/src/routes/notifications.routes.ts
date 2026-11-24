@@ -33,7 +33,7 @@ notificationsRouter.patch("/read-all", async (req, res, next) => {
 notificationsRouter.patch("/:id/read", async (req, res, next) => {
   try {
     const updated = await markNotificationRead(req.params.id, req.userId!);
-    if (!updated) throw notFound("Notification not found");
+    if (!updated) throw notFound("notification_not_found");
     res.status(204).end();
   } catch (err) {
     next(err);

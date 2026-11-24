@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { formatCurrency } from "@/lib/format";
 import type { Listing } from "@/types";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 
 export function PlaceBidModal({
   listing,
@@ -37,7 +38,7 @@ export function PlaceBidModal({
       await onSubmit(amount);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.bids.error);
+      setError(errorMessage(err, t, locale, t.bids.error));
     } finally {
       setSubmitting(false);
     }

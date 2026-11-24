@@ -14,10 +14,11 @@ import {
   trimAddress,
 } from "@/components/account/DeliveryAddressFields";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 
 // Admins maintain the condominiums residents can pick at sign-up.
 export function CondominiumsView() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [condominiums, setCondominiums] = useState<Condominium[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
@@ -49,7 +50,7 @@ export function CondominiumsView() {
       setName("");
       setAddress(EMPTY_ADDRESS);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.condominiums.addError);
+      setError(errorMessage(err, t, locale, t.condominiums.addError));
     } finally {
       setAdding(false);
     }
@@ -62,7 +63,7 @@ export function CondominiumsView() {
       await removeCondominium(condominium.id);
       setCondominiums((prev) => prev.filter((c) => c.id !== condominium.id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.condominiums.removeError);
+      setError(errorMessage(err, t, locale, t.condominiums.removeError));
     }
   }
 

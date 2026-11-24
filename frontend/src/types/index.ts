@@ -117,6 +117,11 @@ export interface Order {
   pickupTime?: string;
   createdAt: string;
   reviewRating?: number; // the buyer's 1–5 rating of the seller, once given
+  buyerReviewRating?: number; // the seller's 1–5 rating of the buyer, once given
+  // The buyer's reputation: their average rating from sellers across all
+  // their orders; buyerRating is undefined until the first review.
+  buyerRating?: number;
+  buyerReviewCount: number;
   // Store orders are delivered: the buyer's phone and delivery address.
   buyerPhone?: string;
   deliveryAddress?: DeliveryAddress;
@@ -176,13 +181,27 @@ export type NotificationType =
   | "meetup_confirmed"
   | "delivery_confirmed"
   | "payment_released"
-  | "order_cancelled";
+  | "order_cancelled"
+  | "residency_submitted"
+  | "residency_approved"
+  | "residency_rejected";
+
+export interface NotificationParams {
+  listingTitle?: string;
+  actorName?: string;
+  amount?: number;
+  variant?: string;
+  buildingName?: string;
+  reason?: string; // why a proof of residency was rejected
+}
 
 export interface Notification {
   id: string;
   type: NotificationType;
+  // English copy from the server; the UI prefers rendering from type + params.
   title: string;
   body: string;
+  params?: NotificationParams;
   read: boolean;
   createdAt: string;
   href?: string;
@@ -196,3 +215,72 @@ export interface ListingFilters {
   minPrice?: number;
   maxPrice?: number;
 }
+
+// Error codes the API answers with (backend/src/lib/http-error.ts).
+export type ApiErrorCode =
+  | "not_authenticated"
+  | "not_allowed"
+  | "not_found"
+  | "invalid_request"
+  | "internal_error"
+  | "admin_only"
+  | "email_taken"
+  | "invalid_credentials"
+  | "user_not_found"
+  | "choose_condominium"
+  | "condominium_exists_choose"
+  | "condominium_exists"
+  | "condominium_not_found"
+  | "admin_email_not_found"
+  | "cannot_remove_own_admin"
+  | "cep_invalid"
+  | "cep_unavailable"
+  | "cep_not_found"
+  | "residency_not_verified"
+  | "residency_proof_required"
+  | "residency_already_verified"
+  | "residency_reviewers_only"
+  | "residency_request_not_found"
+  | "cannot_review_own_residency"
+  | "building_admin_email_not_found"
+  | "building_admin_not_found"
+  | "listing_not_found"
+  | "listing_not_found_or_not_owner"
+  | "sign_in_to_see_listings"
+  | "tv_account_no_community"
+  | "building_required_to_list"
+  | "store_not_found"
+  | "store_products_admin_only"
+  | "store_product_not_restockable"
+  | "store_no_questions"
+  | "cannot_bid_own_listing"
+  | "auction_not_active"
+  | "auction_ended"
+  | "bid_too_low"
+  | "cannot_buy_own_listing"
+  | "listing_unavailable"
+  | "only_winning_bidder"
+  | "meetup_time_required"
+  | "order_not_found"
+  | "order_participants_only"
+  | "order_chat_participants_only"
+  | "order_already_status"
+  | "order_cancelled"
+  | "delivery_already_confirmed"
+  | "meetup_not_agreed"
+  | "store_order_no_meetup"
+  | "no_meetup_proposed"
+  | "meetup_already_confirmed"
+  | "waiting_other_side_meetup"
+  | "store_order_no_cancel"
+  | "handoff_already_confirmed"
+  | "meetup_agreed_ask_seller"
+  | "only_buyer_can_rate"
+  | "rate_after_delivery"
+  | "already_rated"
+  | "only_seller_can_rate_buyer"
+  | "rate_buyer_after_delivery"
+  | "rate_seller_to_confirm"
+  | "rate_buyer_to_confirm"
+  | "insufficient_credits"
+  | "notification_not_found";

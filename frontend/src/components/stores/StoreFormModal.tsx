@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import type { StorePayload } from "@/lib/api";
 import type { Store } from "@/types";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 
 // Creates a store when `store` is omitted, edits it otherwise.
 export function StoreFormModal({
@@ -20,7 +21,7 @@ export function StoreFormModal({
   store?: Store;
   onSubmit: (payload: StorePayload) => Promise<void>;
 }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +46,7 @@ export function StoreFormModal({
       await onSubmit({ name: name.trim(), description: description.trim() });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.store.saveError);
+      setError(errorMessage(err, t, locale, t.store.saveError));
     } finally {
       setSubmitting(false);
     }

@@ -5,22 +5,31 @@ import { Modal } from "@/components/ui/Modal";
 import { FieldGroup, Textarea } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { StarInput } from "@/components/ui/StarRating";
-import { reviewOrder } from "@/lib/api";
+import { completeOrder, reviewBuyer, reviewOrder } from "@/lib/api";
 import type { Order } from "@/types";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 
-export function RateSellerModal({
+// The buyer rates the seller (target "seller"), or the seller rates the
+// buyer (target "buyer"). On community sales the rating is mandatory and is
+// sent with the handoff confirmation (confirmsHandoff); store orders, and
+// community orders completed before that, are rated once completed.
+export function RateOrderModal({
   order,
+  target,
   open,
   onClose,
   onRated,
+  confirmsHandoff = false,
 }: {
   order: Order;
+  target: "seller" | "buyer";
   open: boolean;
   onClose: () => void;
   onRated: (order: Order) => void;
+  confirmsHandoff?: boolean;
 }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -35,19 +44,25 @@ export function RateSellerModal({
     setSubmitting(true);
     setError(null);
     try {
-      onRated(await reviewOrder(order.id, { rating, comment: comment.trim() || undefined }));
+      const submit = confirmsHandoff ? completeOrder : target === "seller" ? reviewOrder : reviewBuyer;
+      onRated(await submit(order.id, { rating, comment: comment.trim() || undefined }));
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.rate.error);
+      setError(errorMessage(err, t, locale, t.rate.error));
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={t.rate.title(order.sellerName)}>
+    <Modal open={open} onClose={onClose} title={t.rate.title(target === "seller" ? order.sellerName : order.buyerName)}>
       <form onSubmit={handleSubmit}>
-        <p className="mb-3 text-xs text-ink-400">{t.rate.howDidItGo(order.listingTitle)}</p>
+        {confirmsHandoff && (
+          <p className="mb-2 rounded-lg bg-amber-100/60 px-3 py-2 text-xs font-medium text-ink">
+            {target === "seller" ? t.rate.requiredToConfirmSeller : t.rate.requiredToConfirmBuyer}
+          </p>
+        )}
+        <p className="mb-3 text-xs text-ink-400">{target === "seller" ? t.rate.howDidItGo(order.listingTitle) : t.rate.howDidSellingGo(order.listingTitle)}</p>
         <div className="mb-4 flex items-center gap-3">
           <StarInput
             value={rating}
@@ -64,14 +79,14 @@ export function RateSellerModal({
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             maxLength={1000}
-            placeholder={t.rate.commentPlaceholder}
+            placeholder={target === "seller" ? t.rate.commentPlaceholder : t.rate.buyerCommentPlaceholder}
           />
         </FieldGroup>
 
         {error && <p className="mb-3 text-xs font-medium text-danger">{error}</p>}
 
         <Button type="submit" fullWidth disabled={submitting}>
-          {submitting ? t.common.saving : t.rate.submit}
+          {submitting ? t.common.saving : confirmsHandoff ? t.rate.submitAndConfirm : t.rate.submit}
         </Button>
       </form>
     </Modal>

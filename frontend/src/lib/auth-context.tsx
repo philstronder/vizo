@@ -6,6 +6,7 @@ import {
   login as apiLogin,
   logout as apiLogout,
   register as apiRegister,
+  resubmitResidencyProof as apiResubmitResidencyProof,
   updateProfile as apiUpdateProfile,
   type AuthUser,
   type RegisterPayload,
@@ -19,6 +20,7 @@ interface AuthContextValue {
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (payload: UpdateProfilePayload) => Promise<void>;
+  resubmitResidencyProof: (proofPhoto: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -58,8 +60,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(await apiUpdateProfile(payload));
   }, []);
 
+  const resubmitResidencyProof = useCallback(async (proofPhoto: string) => {
+    setUser(await apiResubmitResidencyProof(proofPhoto));
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateProfile, resubmitResidencyProof }}>
       {children}
     </AuthContext.Provider>
   );

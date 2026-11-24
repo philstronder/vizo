@@ -12,6 +12,7 @@ import { formatCurrency, toDateTimeLocalValue } from "@/lib/format";
 import { CreditCard, MapPin, ShieldCheck, Wallet } from "lucide-react";
 import type { Listing } from "@/types";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 import { storeHref, useStoreMode } from "@/lib/store-mode";
 
 export function CheckoutView({ listingId }: { listingId: string }) {
@@ -87,7 +88,7 @@ export function CheckoutView({ listingId }: { listingId: string }) {
       // Store-mode viewers stay in the store; everyone else tracks it in Orders.
       router.push(storeMode ? `${storeHref(storeMode)}?purchased=1` : "/orders");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.checkout.error);
+      setError(errorMessage(err, t, locale, t.checkout.error));
       setSubmitting(false);
     }
   }

@@ -17,8 +17,30 @@ export interface UserRow {
   address_city: string | null;
   address_state: string | null;
   verified: boolean;
+  // Proof of residency awaiting review, as an image data URL (see
+  // lib/image.ts in the frontend). Cleared once it's reviewed.
+  verification_photo_key: string | null;
+  verification_submitted_at: Date | null;
+  verification_reviewed_at: Date | null;
+  verification_reviewed_by: string | null;
+  verification_rejection_reason: string | null;
   is_admin: boolean;
   created_at: Date;
+}
+
+// Residents are "pending" from sign-up until their proof of residency is
+// reviewed; "rejected" ones are asked to send a new photo. TV store viewers
+// have no building to prove and keep the "approved" status they signed up with.
+export type VerificationStatus = "approved" | "pending" | "rejected";
+
+export function verificationStatus(row: Pick<UserRow, "verified" | "verification_reviewed_at">): VerificationStatus {
+  if (row.verified) return "approved";
+  return row.verification_reviewed_at ? "rejected" : "pending";
+}
+
+// Unverified residents can't see or use their community yet.
+export function isCommunityMember(row: Pick<UserRow, "building_name" | "verified">): boolean {
+  return row.building_name !== null && row.verified;
 }
 
 export interface DeliveryAddress {
@@ -66,6 +88,8 @@ export interface PublicUser {
   phone?: string;
   deliveryAddress?: DeliveryAddress;
   verified: boolean;
+  verificationStatus: VerificationStatus;
+  verificationRejectionReason?: string;
   isAdmin: boolean;
   memberSince: string;
 }
@@ -81,6 +105,8 @@ export function toPublicUser(row: UserRow): PublicUser {
     phone: row.phone ?? undefined,
     deliveryAddress: toDeliveryAddress(row),
     verified: row.verified,
+    verificationStatus: verificationStatus(row),
+    verificationRejectionReason: row.verification_rejection_reason ?? undefined,
     isAdmin: row.is_admin,
     memberSince: row.created_at.toISOString(),
   };
@@ -107,18 +133,17 @@ export interface CreateUserInput {
   unitNumber?: string;
   phone?: string;
   deliveryAddress?: DeliveryAddress;
-  // Address verification is a manual/async review step in a real deployment
-  // (an admin or a document-verification API confirms the uploaded proof).
-  // We mark accounts verified immediately here so the mock flow stays usable;
-  // flip the default to FALSE once that review step exists.
-  verified?: boolean;
+  // Residents send a proof of residency and wait for a building admin to
+  // review it; viewers have nothing to prove and are verified right away.
+  proofPhoto?: string;
 }
 
 export async function createUser(input: CreateUserInput): Promise<UserRow> {
   const { rows } = await pool.query<UserRow>(
     `INSERT INTO users (name, email, password_hash, building_name, unit_number, verified, phone,
-       address_postal_code, address_street, address_number, address_complement, address_district, address_city, address_state, building_block)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+       address_postal_code, address_street, address_number, address_complement, address_district, address_city, address_state, building_block,
+       verification_photo_key, verification_submitted_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, CASE WHEN $16::text IS NULL THEN NULL ELSE now() END)
      RETURNING *`,
     [
       input.name,
@@ -126,10 +151,11 @@ export async function createUser(input: CreateUserInput): Promise<UserRow> {
       input.passwordHash,
       input.buildingName ?? null,
       input.unitNumber ?? null,
-      input.verified ?? true,
+      input.proofPhoto === undefined,
       input.phone ?? null,
       ...addressParams(input.deliveryAddress),
       input.buildingBlock || null,
+      input.proofPhoto ?? null,
     ]
   );
   return rows[0];
@@ -155,6 +181,9 @@ export interface UpdateUserInput {
   buildingBlock?: string; // "" clears it
   phone?: string;
   deliveryAddress?: DeliveryAddress;
+  // Sent when the user joins or moves to another building, which they have to
+  // prove again: it puts them back to pending review.
+  proofPhoto?: string;
 }
 
 export async function updateUser(id: string, input: UpdateUserInput): Promise<UserRow | null> {
@@ -172,7 +201,13 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<Us
        address_district = CASE WHEN $6::boolean THEN $11 ELSE address_district END,
        address_city = CASE WHEN $6::boolean THEN $12 ELSE address_city END,
        address_state = CASE WHEN $6::boolean THEN $13 ELSE address_state END,
-       building_block = CASE WHEN $14::boolean THEN $15 ELSE building_block END
+       building_block = CASE WHEN $14::boolean THEN $15 ELSE building_block END,
+       verified = CASE WHEN $16::text IS NULL THEN verified ELSE FALSE END,
+       verification_photo_key = COALESCE($16, verification_photo_key),
+       verification_submitted_at = CASE WHEN $16::text IS NULL THEN verification_submitted_at ELSE now() END,
+       verification_reviewed_at = CASE WHEN $16::text IS NULL THEN verification_reviewed_at ELSE NULL END,
+       verification_reviewed_by = CASE WHEN $16::text IS NULL THEN verification_reviewed_by ELSE NULL END,
+       verification_rejection_reason = CASE WHEN $16::text IS NULL THEN verification_rejection_reason ELSE NULL END
      WHERE id = $5 RETURNING *`,
     [
       input.name,
@@ -184,6 +219,7 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<Us
       ...addressParams(address),
       input.buildingBlock !== undefined,
       input.buildingBlock || null,
+      input.proofPhoto ?? null,
     ]
   );
   return rows[0] ?? null;

@@ -8,6 +8,7 @@ import {
   confirmDelivery,
   findOrderById,
   proposeMeetup,
+  reviewBuyer,
   reviewOrder,
 } from "../../src/db/orders";
 import { findListingById, type ListingRow } from "../../src/db/listings";
@@ -27,6 +28,7 @@ vi.mock("../../src/db/orders", async (importOriginal) => ({
   acceptMeetup: vi.fn(),
   cancelOrder: vi.fn(),
   reviewOrder: vi.fn(),
+  reviewBuyer: vi.fn(),
 }));
 vi.mock("../../src/db/listings", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../src/db/listings")>()),
@@ -70,6 +72,8 @@ describe("auth", () => {
     ["patch", `/api/orders/${ORDER_ID}/complete`],
     ["post", `/api/orders/${ORDER_ID}/cancel`],
     ["get", `/api/orders/${ORDER_ID}/messages`],
+    ["post", `/api/orders/${ORDER_ID}/review`],
+    ["post", `/api/orders/${ORDER_ID}/buyer-review`],
   ] as const)("%s %s requires a session", async (method, path) => {
     expect((await request(app)[method](path)).status).toBe(401);
   });
@@ -98,7 +102,7 @@ describe("POST /api/orders (checkout)", () => {
   });
 
   it("checks the buyer can see the listing before buying", async () => {
-    vi.mocked(findViewableListing).mockRejectedValue(notFound("Listing not found"));
+    vi.mocked(findViewableListing).mockRejectedValue(notFound("listing_not_found"));
     const res = await checkout({ listingId: LISTING_ID, meetupAt: future() });
     expect(res.status).toBe(404);
     expect(checkoutListingTx).not.toHaveBeenCalled();
@@ -116,17 +120,44 @@ describe("POST /api/orders (checkout)", () => {
   });
 
   it("answers 400 with the reason when the listing can't be bought", async () => {
-    vi.mocked(checkoutListingTx).mockResolvedValue({ ok: false, reason: "You cannot buy your own listing" });
+    vi.mocked(checkoutListingTx).mockResolvedValue({ ok: false, reason: "cannot_buy_own_listing" });
     const res = await checkout({ listingId: LISTING_ID, meetupAt: future() });
     expect(res.status).toBe(400);
-    expect(res.body.message).toBe("You cannot buy your own listing");
+    expect(res.body).toMatchObject({ code: "cannot_buy_own_listing", message: "You cannot buy your own listing" });
     expect(createNotification).not.toHaveBeenCalled();
   });
 });
 
 describe("PATCH /api/orders/:id/complete", () => {
-  const complete = (userId: string) =>
-    request(app).patch(`/api/orders/${ORDER_ID}/complete`).set("Cookie", authCookie(userId));
+  const complete = (userId: string, body: object = { rating: 5 }) =>
+    request(app).patch(`/api/orders/${ORDER_ID}/complete`).set("Cookie", authCookie(userId)).send(body);
+
+  it("passes the rating that comes with the confirmation on", async () => {
+    vi.mocked(confirmDelivery).mockResolvedValue({ ok: true, order, value: { completed: false, releasedAmount: 0 } });
+    await complete(BUYER_ID, { rating: 4, comment: "  Great  " });
+    expect(confirmDelivery).toHaveBeenCalledWith(ORDER_ID, BUYER_ID, { rating: 4, comment: "Great" });
+
+    vi.mocked(confirmDelivery).mockClear();
+    await complete(SELLER_ID, { rating: 3, comment: "   " });
+    expect(confirmDelivery).toHaveBeenCalledWith(ORDER_ID, SELLER_ID, { rating: 3, comment: undefined });
+
+    // Store orders confirm without a body; confirmDelivery decides whether a rating is required.
+    vi.mocked(confirmDelivery).mockClear();
+    await complete(SELLER_ID, {});
+    expect(confirmDelivery).toHaveBeenCalledWith(ORDER_ID, SELLER_ID, undefined);
+  });
+
+  it.each([0, 6, 2.5, "5"])("rejects a confirmation rated %s", async (rating) => {
+    expect((await complete(BUYER_ID, { rating })).status).toBe(400);
+    expect(confirmDelivery).not.toHaveBeenCalled();
+  });
+
+  it("answers 409 when confirmDelivery wants a rating", async () => {
+    vi.mocked(confirmDelivery).mockResolvedValue({ ok: false, status: 409, reason: "rate_seller_to_confirm" });
+    const res = await complete(BUYER_ID, {});
+    expect(res.status).toBe(409);
+    expect(res.body).toMatchObject({ code: "rate_seller_to_confirm" });
+  });
 
   it("asks the other side to confirm after the first confirmation", async () => {
     vi.mocked(confirmDelivery).mockResolvedValue({ ok: true, order, value: { completed: false, releasedAmount: 0 } });
@@ -144,17 +175,37 @@ describe("PATCH /api/orders/:id/complete", () => {
     ]);
   });
 
+  it("tells the other side the community order is complete, with nothing left to rate", async () => {
+    vi.mocked(confirmDelivery).mockResolvedValue({ ok: true, order, value: { completed: true, releasedAmount: 0 } });
+    await complete(BUYER_ID);
+    expect(notifications()[0]).toMatchObject({
+      userId: SELLER_ID,
+      type: "order_completed",
+      href: "/orders",
+      params: expect.objectContaining({ variant: "handoff" }),
+    });
+  });
+
   it("notifies the buyer when the seller confirms", async () => {
     vi.mocked(confirmDelivery).mockResolvedValue({ ok: true, order, value: { completed: false, releasedAmount: 0 } });
     await complete(SELLER_ID);
     expect(notifications()[0]).toMatchObject({ userId: BUYER_ID, body: expect.stringContaining("Bruno") });
   });
 
+  it("keeps the plain delivered notification for store orders", async () => {
+    const storeOrder = makeOrderRow({ store_id: "store-1" });
+    vi.mocked(confirmDelivery).mockResolvedValue({ ok: true, order: storeOrder, value: { completed: true, releasedAmount: 0 } });
+    await complete(SELLER_ID);
+    expect(notifications()).toEqual([
+      expect.objectContaining({ userId: BUYER_ID, type: "order_completed", href: "/orders", params: { listingTitle: "Bike", actorName: "Bruno" } }),
+    ]);
+  });
+
   it("passes on the status of a refused confirmation", async () => {
-    vi.mocked(confirmDelivery).mockResolvedValue({ ok: false, status: 409, reason: "You already confirmed this delivery" });
+    vi.mocked(confirmDelivery).mockResolvedValue({ ok: false, status: 409, reason: "delivery_already_confirmed" });
     const res = await complete(BUYER_ID);
     expect(res.status).toBe(409);
-    expect(res.body.message).toBe("You already confirmed this delivery");
+    expect(res.body).toMatchObject({ code: "delivery_already_confirmed", message: "You already confirmed this delivery" });
     expect(createNotification).not.toHaveBeenCalled();
   });
 });
@@ -215,6 +266,54 @@ describe("POST /api/orders/:id/review", () => {
     const res = await review({ rating: 5, comment: "   " });
     expect(res.status).toBe(201);
     expect(vi.mocked(reviewOrder).mock.calls[0][0].comment).toBeUndefined();
+  });
+});
+
+describe("POST /api/orders/:id/buyer-review", () => {
+  it("records the seller's rating of the buyer and returns the order with it", async () => {
+    vi.mocked(reviewBuyer).mockResolvedValue({ ok: true });
+    vi.mocked(findOrderById).mockResolvedValue(
+      makeOrderRow({ status: "completed", buyer_review_rating: 4, buyer_rating: "4.5000", buyer_review_count: "2" })
+    );
+    const res = await request(app)
+      .post(`/api/orders/${ORDER_ID}/buyer-review`)
+      .set("Cookie", authCookie(SELLER_ID))
+      .send({ rating: 4, comment: "Punctual" });
+
+    expect(res.status).toBe(201);
+    expect(vi.mocked(reviewBuyer).mock.calls[0][0]).toMatchObject({ orderId: ORDER_ID, userId: SELLER_ID, rating: 4, comment: "Punctual" });
+    expect(reviewOrder).not.toHaveBeenCalled();
+    expect(res.body).toMatchObject({ buyerReviewRating: 4, buyerRating: 4.5, buyerReviewCount: 2 });
+  });
+
+  it.each([0, 6, 3.5, "5"])("rejects a rating of %s", async (rating) => {
+    const res = await request(app)
+      .post(`/api/orders/${ORDER_ID}/buyer-review`)
+      .set("Cookie", authCookie(SELLER_ID))
+      .send({ rating });
+    expect(res.status).toBe(400);
+    expect(reviewBuyer).not.toHaveBeenCalled();
+  });
+
+  it("rejects a comment over 1000 characters and drops an empty one", async () => {
+    const send = (comment: string) =>
+      request(app).post(`/api/orders/${ORDER_ID}/buyer-review`).set("Cookie", authCookie(SELLER_ID)).send({ rating: 3, comment });
+    expect((await send("x".repeat(1001))).status).toBe(400);
+    expect(reviewBuyer).not.toHaveBeenCalled();
+
+    vi.mocked(reviewBuyer).mockResolvedValue({ ok: true });
+    expect((await send("   ")).status).toBe(201);
+    expect(vi.mocked(reviewBuyer).mock.calls[0][0].comment).toBeUndefined();
+  });
+
+  it("passes the refusal through", async () => {
+    vi.mocked(reviewBuyer).mockResolvedValue({ ok: false, status: 403, reason: "only_seller_can_rate_buyer" });
+    const res = await request(app)
+      .post(`/api/orders/${ORDER_ID}/buyer-review`)
+      .set("Cookie", authCookie(BUYER_ID))
+      .send({ rating: 4 });
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe("only_seller_can_rate_buyer");
   });
 });
 
@@ -290,6 +389,6 @@ describe("error handling", () => {
     vi.mocked(findOrderById).mockRejectedValue(new Error("connection lost to db-host-1"));
     const res = await request(app).get(`/api/orders/${ORDER_ID}/messages`).set("Cookie", authCookie(BUYER_ID));
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ message: "Internal server error" });
+    expect(res.body).toEqual({ code: "internal_error", message: "Internal server error" });
   });
 });

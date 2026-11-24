@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AuthShell } from "./AuthShell";
@@ -12,12 +12,12 @@ import {
   isAddressComplete,
   trimAddress,
 } from "@/components/account/DeliveryAddressFields";
+import { ProofOfResidencyField } from "@/components/account/ProofOfResidencyField";
 import { Button } from "@/components/ui/Button";
-import { Card, CardBody } from "@/components/ui/Card";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 import { safeNext, useStoreMode } from "@/lib/store-mode";
-import { Camera, ShieldCheck } from "lucide-react";
 import { ViewerRegisterForm } from "./ViewerRegisterForm";
 
 // `next` is where to go once signed in, e.g. back to the product a store
@@ -33,8 +33,7 @@ function ResidentRegisterForm({ next }: { next?: string }) {
   const router = useRouter();
   const destination = safeNext(next) ?? "/";
   const { register } = useAuth();
-  const { t } = useI18n();
-  const fileRef = useRef<HTMLInputElement>(null);
+  const { locale, t } = useI18n();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -46,7 +45,7 @@ function ResidentRegisterForm({ next }: { next?: string }) {
   const [newCondominiumName, setNewCondominiumName] = useState("");
   const [newCondominiumAddress, setNewCondominiumAddress] = useState(EMPTY_ADDRESS);
   const [buildingBlock, setBuildingBlock] = useState("");
-  const [proofFile, setProofFile] = useState<string | null>(null);
+  const [proofPhoto, setProofPhoto] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -55,11 +54,11 @@ function ResidentRegisterForm({ next }: { next?: string }) {
     ? newCondominiumName.trim() && isAddressComplete(newCondominiumAddress)
     : buildingName.trim();
   const canSubmit =
-    name.trim() && email.trim() && password.length >= 6 && unitNumber.trim() && condominiumChosen && proofFile;
+    name.trim() && email.trim() && password.length >= 6 && unitNumber.trim() && condominiumChosen && proofPhoto;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || !proofPhoto) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -70,13 +69,14 @@ function ResidentRegisterForm({ next }: { next?: string }) {
         password,
         unitNumber,
         buildingBlock,
+        proofPhoto,
         ...(creatingCondominium
           ? { newCondominium: { name: newCondominiumName.trim(), address: trimAddress(newCondominiumAddress) } }
           : { buildingName }),
       });
       router.push(destination);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.auth.register.error);
+      setError(errorMessage(err, t, locale, t.auth.register.error));
     } finally {
       setSubmitting(false);
     }
@@ -164,33 +164,18 @@ function ResidentRegisterForm({ next }: { next?: string }) {
           </div>
         )}
 
-        <Card className="mt-2 mb-5">
-          <CardBody className="text-center">
-            <ShieldCheck className="mx-auto mb-2 text-amber-600" size={22} />
-            <p className="mb-1 text-sm font-bold text-ink">{t.auth.register.addressVerification}</p>
-            <p className="mb-3 text-xs text-ink-400">
-              {t.auth.register.addressVerificationHint(condominiumName.trim() || t.common.yourBuilding)}
-            </p>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => setProofFile(e.target.files?.[0]?.name ?? null)}
-            />
-            <Button type="button" variant="secondary" size="sm" onClick={() => fileRef.current?.click()}>
-              <Camera size={14} /> {proofFile ? t.auth.register.replacePhoto : t.auth.register.uploadPhoto}
-            </Button>
-            {proofFile && <p className="mt-2 text-xs font-medium text-success">{t.auth.register.uploaded(proofFile)}</p>}
-          </CardBody>
-        </Card>
+        <ProofOfResidencyField
+          buildingName={condominiumName.trim() || t.common.yourBuilding}
+          value={proofPhoto}
+          onChange={setProofPhoto}
+        />
 
         {error && <p className="mb-3 text-sm font-medium text-danger">{error}</p>}
 
         <Button type="submit" fullWidth disabled={!canSubmit || submitting}>
           {submitting ? t.auth.register.submitting : t.auth.register.submit}
         </Button>
-        {!proofFile && (
+        {!proofPhoto && (
           <p className="mt-2 text-center text-xs text-ink-400">
             {t.auth.register.verificationRequired}
           </p>

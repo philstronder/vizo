@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import type { Order, OrderMessage } from "@/types";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/i18n/I18nProvider";
+import { errorMessage } from "@/lib/error-message";
 
 // How often an open chat checks for new messages.
 const POLL_MS = 5000;
@@ -81,7 +82,7 @@ export function OrderChat({
       setMessages((prev) => [...(prev ?? []), sent]);
       setDraft("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.orderChat.sendError);
+      setError(errorMessage(err, t, locale, t.orderChat.sendError));
     } finally {
       setSending(false);
     }

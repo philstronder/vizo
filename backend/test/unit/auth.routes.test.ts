@@ -4,6 +4,7 @@ import { app } from "../../src/app";
 import { createUser, findUserByEmail, findUserById, updateUser } from "../../src/db/users";
 import { createCondominium, findCondominiumByName } from "../../src/db/condominiums";
 import { hashPassword } from "../../src/lib/password";
+import { notifyResidencySubmitted } from "../../src/lib/residency";
 import { AUTH_COOKIE_NAME, verifyAuthToken } from "../../src/lib/jwt";
 import { BUYER_ID, authCookie, makeUserRow } from "./fixtures";
 
@@ -13,6 +14,15 @@ vi.mock("../../src/db/users", async (importOriginal) => ({
   findUserById: vi.fn(),
   createUser: vi.fn(),
   updateUser: vi.fn(),
+}));
+// No building admins, and notifications go nowhere.
+vi.mock("../../src/db/residency", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/db/residency")>()),
+  condominiumsAdministeredBy: vi.fn(async () => []),
+}));
+vi.mock("../../src/lib/residency", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/lib/residency")>()),
+  notifyResidencySubmitted: vi.fn(async () => {}),
 }));
 vi.mock("../../src/db/condominiums", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../src/db/condominiums")>()),
@@ -33,12 +43,15 @@ const condominium = {
   created_at: new Date(),
 };
 
+const PHOTO = "data:image/jpeg;base64,/9j/4AAQSkZJRg==";
+
 const resident = {
   name: "Ana",
   email: "ana@example.com",
   password: "secret123",
   unitNumber: "42",
   buildingName: "edifício aurora",
+  proofPhoto: PHOTO,
 };
 
 function authTokenFrom(res: request.Response): string | undefined {
@@ -50,7 +63,12 @@ function authTokenFrom(res: request.Response): string | undefined {
 beforeEach(() => {
   vi.mocked(findUserByEmail).mockResolvedValue(null);
   vi.mocked(createUser).mockImplementation(async (input) =>
-    makeUserRow({ name: input.name, email: input.email, building_name: input.buildingName ?? null })
+    makeUserRow({
+      name: input.name,
+      email: input.email,
+      building_name: input.buildingName ?? null,
+      verified: input.proofPhoto === undefined,
+    })
   );
 });
 
@@ -66,6 +84,24 @@ describe("POST /api/auth/register", () => {
     expect(vi.mocked(createUser).mock.calls[0][0]).toMatchObject({ buildingName: "Edifício Aurora", unitNumber: "42" });
     expect(vi.mocked(createUser).mock.calls[0][0].passwordHash).not.toBe("secret123");
     expect(verifyAuthToken(authTokenFrom(res)!).userId).toBe(BUYER_ID);
+  });
+
+  it("keeps the resident pending until their proof of residency is reviewed", async () => {
+    vi.mocked(findCondominiumByName).mockResolvedValue(condominium);
+    const res = await request(app).post("/api/auth/register").send(resident);
+    expect(res.body).toMatchObject({ verified: false, verificationStatus: "pending", buildingAdminOf: [] });
+    expect(vi.mocked(createUser).mock.calls[0][0].proofPhoto).toBe(PHOTO);
+    expect(notifyResidencySubmitted).toHaveBeenCalledOnce();
+  });
+
+  it("requires a proof of residency that is an image", async () => {
+    vi.mocked(findCondominiumByName).mockResolvedValue(condominium);
+    for (const proofPhoto of [undefined, "", "data:text/html;base64,PGh0bWw+", "https://example.com/bill.jpg"]) {
+      const res = await request(app).post("/api/auth/register").send({ ...resident, proofPhoto });
+      expect(res.status).toBe(400);
+      expect(res.body.issues[0].path).toEqual(["proofPhoto"]);
+    }
+    expect(createUser).not.toHaveBeenCalled();
   });
 
   it("sets an httpOnly auth cookie", async () => {
@@ -140,6 +176,9 @@ describe("POST /api/auth/register", () => {
     expect(findCondominiumByName).not.toHaveBeenCalled();
     expect(vi.mocked(createUser).mock.calls[0][0]).toMatchObject({ phone: "11999999999" });
     expect(vi.mocked(createUser).mock.calls[0][0].buildingName).toBeUndefined();
+    expect(vi.mocked(createUser).mock.calls[0][0].proofPhoto).toBeUndefined();
+    expect(res.body.verificationStatus).toBe("approved");
+    expect(notifyResidencySubmitted).not.toHaveBeenCalled();
   });
 });
 
@@ -201,6 +240,29 @@ describe("PATCH /api/auth/me", () => {
     expect(res.status).toBe(200);
     expect(findCondominiumByName).not.toHaveBeenCalled();
     expect(vi.mocked(updateUser).mock.calls[0][1].buildingName).toBe("Edifício Aurora");
+    // Staying in the same building needs no new proof.
+    expect(vi.mocked(updateUser).mock.calls[0][1].proofPhoto).toBeUndefined();
+  });
+
+  it("asks for a new proof of residency when moving to another building", async () => {
+    vi.mocked(findUserById).mockResolvedValue(makeUserRow());
+    vi.mocked(findCondominiumByName).mockResolvedValue({ ...condominium, name: "Torre Boreal" });
+    vi.mocked(updateUser).mockResolvedValue(makeUserRow({ building_name: "Torre Boreal", verified: false }));
+    const move = { name: "Ana", buildingName: "torre boreal", unitNumber: "1" };
+
+    const withoutProof = await request(app).patch("/api/auth/me").set("Cookie", authCookie(BUYER_ID)).send(move);
+    expect(withoutProof.status).toBe(400);
+    expect(withoutProof.body.code).toBe("residency_proof_required");
+    expect(updateUser).not.toHaveBeenCalled();
+
+    const res = await request(app)
+      .patch("/api/auth/me")
+      .set("Cookie", authCookie(BUYER_ID))
+      .send({ ...move, proofPhoto: PHOTO });
+    expect(res.status).toBe(200);
+    expect(vi.mocked(updateUser).mock.calls[0][1]).toMatchObject({ buildingName: "Torre Boreal", proofPhoto: PHOTO });
+    expect(res.body.verificationStatus).toBe("pending");
+    expect(notifyResidencySubmitted).toHaveBeenCalledOnce();
   });
 
   it("rejects moving to a condominium that isn't on the list", async () => {

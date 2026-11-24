@@ -1,4 +1,5 @@
 import type {
+  ApiErrorCode,
   CreditTransactionType,
   ListingCategory,
   ListingCondition,
@@ -97,6 +98,7 @@ export const enUS = {
     stores: "Stores",
     condominiums: "Condominiums",
     admins: "Admins",
+    verifications: "Verifications",
   },
 
   auth: {
@@ -170,6 +172,10 @@ export const enUS = {
     title: "Listings Feed",
     category: "Category",
     priceRange: "Price Range",
+    min: "Min",
+    max: "Max",
+    minPrice: "Minimum price",
+    maxPrice: "Maximum price",
     listingType: "Listing Type",
     all: "All",
     condition: "Condition",
@@ -343,6 +349,8 @@ export const enUS = {
     caughtUp: "You're all caught up.",
     youRated: (name: string) => `You rated ${name}`,
     rateSeller: "Rate seller",
+    rateBuyer: "Rate buyer",
+    buyerReputation: "Buyer reputation",
     markDelivered: "Mark as delivered",
     updateError: "Could not update order",
     payment: {
@@ -467,6 +475,66 @@ export const enUS = {
     you: "You",
   },
 
+  buildingAdmins: {
+    title: "Building admins",
+    subtitle:
+      "Building admins review the proof of residency of people signing up to their condominium. Requests for condominiums without one come to platform admins.",
+    condominium: "Condominium",
+    email: "Email of the building admin",
+    add: "Add building admin",
+    addError: "Unable to add building admin",
+    removeError: "Unable to remove building admin",
+    confirmRemove: (name: string, condominium: string) =>
+      `Remove ${name} as building admin of ${condominium}?`,
+    removeFrom: (name: string, condominium: string) =>
+      `Remove ${name} from ${condominium}`,
+    empty: "No building admins yet.",
+  },
+
+  // What residents see while their proof of residency is reviewed.
+  residency: {
+    pendingTitle: "Your residency is being reviewed",
+    pendingHint: (building: string) =>
+      `A building admin of ${building} is checking your proof of residency. You'll get a notification once it's approved, and then you can buy and sell with your neighbors.`,
+    rejectedTitle: "Your proof of residency wasn't approved",
+    rejectedHint: (building: string) =>
+      `Send a new photo of a document showing you live in ${building}.`,
+    reason: (reason: string) => `Reason: ${reason}`,
+    sendNewPhoto: "Send new photo",
+    sending: "Sending...",
+    resubmitError: "Could not send the photo",
+    proofAlt: "Proof of residency",
+    unreadablePhoto: "Could not read this image. Try another photo.",
+    changingBuildingHint:
+      "Moving to another building? Its building admin needs to approve a new proof of residency first.",
+  },
+
+  verifications: {
+    title: "Residency verifications",
+    subtitleFor: (buildings: string) =>
+      `People who want to join ${buildings}. Check that the document shows their name and an address in the building.`,
+    subtitleAll:
+      "People waiting for their proof of residency to be approved, across every building.",
+    loading: "Loading requests...",
+    loadError: "Could not load the requests",
+    emptyTitle: "All caught up",
+    emptyHint: "No proofs of residency are waiting for review.",
+    building: "Building",
+    unit: "Unit",
+    block: (block: string) => `Block ${block}`,
+    sent: "Sent",
+    noPhoto: "No photo",
+    openPhoto: "Enlarge photo",
+    proofOf: (name: string) => `Proof of residency of ${name}`,
+    approve: "Approve",
+    reject: "Reject",
+    reason: "Reason (shown to the resident)",
+    reasonPlaceholder: "e.g. The address on the bill is from another building",
+    confirmReject: "Reject request",
+    cancel: "Cancel",
+    reviewError: "Could not save your decision",
+  },
+
   condominiumSearch: {
     noResults: "No condominium found",
     moreResults: (count: number) =>
@@ -529,15 +597,157 @@ export const enUS = {
     withdrawalTo: (pixKey: string) => `To ${pixKey}`,
   },
 
+  // Notification text built from the server's type + params. Amounts arrive
+  // already formatted for the locale; message bodies are the sender's own text.
+  notification: {
+    sold: (title: string) => `${title} sold!`,
+    soldBodyStore: "Your item was purchased.",
+    soldBodyHeld:
+      "Your item was purchased and the payment is held by MyVizo. Review the buyer's suggested meetup time.",
+    newBid: (title: string) => `New bid on ${title}`,
+    newBidBody: (amount: string) => `Someone bid ${amount}.`,
+    listingMessage: (title: string) => `New message on ${title}`,
+    orderMessage: (name: string, title: string) =>
+      `${name} sent you a message about ${title}`,
+    deliveryConfirmed: (title: string) => `${title}: confirm the handoff`,
+    deliveryConfirmedBody: (name: string) =>
+      `${name} confirmed the handoff. Confirm it too to complete the order.`,
+    orderCompleted: (title: string) => `${title} delivered`,
+    orderCompletedBody: (name: string) => `${name} marked this order as delivered.`,
+    orderCompletedHandoff: (name: string) => `${name} confirmed the handoff. The order is complete.`,
+    orderCompletedRateBuyer: (name: string) =>
+      `${name} confirmed the handoff. Rate the buyer so other sellers know how it went.`,
+    orderCompletedRateSeller: (name: string) =>
+      `${name} confirmed the handoff. Rate the seller so other buyers know how it went.`,
+    paymentReleased: "Payment released",
+    paymentReleasedBody: (amount: string, title: string) =>
+      `${amount} in credits from ${title} were added to your wallet.`,
+    meetupProposed: (title: string) => `New meetup time for ${title}`,
+    meetupProposedBody: (name: string) =>
+      `${name} suggested another time to meet. Accept it or suggest a different one.`,
+    meetupConfirmed: (title: string) => `Meetup confirmed for ${title}`,
+    meetupConfirmedBody: (name: string) => `${name} accepted the meetup time.`,
+    orderCancelled: (title: string) => `${title} order cancelled`,
+    orderCancelledByBuyer: (name: string) =>
+      `${name} cancelled the order. Your item is back on sale.`,
+    orderCancelledBySeller: (name: string) =>
+      `${name} cancelled the order. Your payment was refunded.`,
+    residencySubmitted: (name: string, building: string) =>
+      `${name} wants to join ${building}`,
+    residencySubmittedBody: "Review their proof of residency.",
+    residencyApproved: (building: string) => `Welcome to ${building}`,
+    residencyApprovedBody:
+      "Your proof of residency was approved. You can now buy and sell with your neighbors.",
+    residencyRejected: "Proof of residency not approved",
+    residencyRejectedBody: "Send a new photo to try again.",
+    residencyRejectedBodyReason: (reason: string) =>
+      `Reason: ${reason}. Send a new photo to try again.`,
+  },
+
+  // Server errors by code. bidTooLow/orderAlreadyStatus get their value
+  // already formatted for the locale.
+  errors: {
+    not_authenticated: "Please sign in to continue.",
+    not_allowed: "You're not allowed to do this.",
+    not_found: "Not found.",
+    invalid_request: "Some of the information is invalid. Check it and try again.",
+    internal_error: "Something went wrong. Please try again.",
+    admin_only: "Only admins can do this.",
+    email_taken: "An account with this email already exists.",
+    invalid_credentials: "Invalid email or password.",
+    user_not_found: "User not found.",
+    choose_condominium: "Choose a condominium from the list.",
+    condominium_exists_choose: "This condominium is already on the list; choose it there.",
+    condominium_exists: "This condominium is already on the list.",
+    condominium_not_found: "Condominium not found.",
+    admin_email_not_found: "No account with this email. Ask them to sign up first.",
+    cannot_remove_own_admin: "You can't remove your own admin access.",
+    cep_invalid: "CEP must have 8 digits.",
+    cep_unavailable: "CEP lookup is unavailable.",
+    cep_not_found: "CEP not found.",
+    residency_not_verified: "Your proof of residency hasn't been approved yet.",
+    residency_proof_required: "Send a photo proving you live in this building.",
+    residency_already_verified: "Your residency is already verified.",
+    residency_reviewers_only: "Only building admins can review proofs of residency.",
+    residency_request_not_found: "This request was already reviewed, or doesn't exist.",
+    cannot_review_own_residency: "You can't review your own proof of residency.",
+    building_admin_email_not_found: "No account with this email. Ask them to sign up first.",
+    building_admin_not_found: "This person isn't a building admin of this condominium.",
+    listing_not_found: "Listing not found.",
+    listing_not_found_or_not_owner: "Listing not found, or you don't own it.",
+    sign_in_to_see_listings: "Sign in to see your community's listings.",
+    tv_account_no_community: "TV store accounts don't have a building community.",
+    building_required_to_list: "Add a building to your profile to list items in a community.",
+    store_not_found: "Store not found.",
+    store_products_admin_only: "Only admins can add products to a store.",
+    store_product_not_restockable: "Store product not found, or it can't be restocked.",
+    store_no_questions: "Store products don't take questions.",
+    cannot_bid_own_listing: "You cannot bid on your own listing.",
+    auction_not_active: "This listing is not an active auction.",
+    auction_ended: "This auction has ended.",
+    bid_too_low: (amount: string) => `Bid must be greater than ${amount}.`,
+    cannot_buy_own_listing: "You cannot buy your own listing.",
+    listing_unavailable: "This listing is no longer available.",
+    only_winning_bidder: "Only the winning bidder can check out this auction.",
+    meetup_time_required: "Suggest a date and time to meet the seller.",
+    order_not_found: "Order not found.",
+    order_participants_only: "Only the buyer or seller can update this order.",
+    order_chat_participants_only: "Only the buyer or seller can see this conversation.",
+    order_already_status: (status: string) => `This order is already ${status}.`,
+    order_cancelled: "This order was cancelled.",
+    delivery_already_confirmed: "You already confirmed this delivery.",
+    meetup_not_agreed: "Agree on the meetup time before confirming the handoff.",
+    store_order_no_meetup: "Store orders are delivered, not picked up.",
+    no_meetup_proposed: "No meetup time has been proposed.",
+    meetup_already_confirmed: "The meetup is already confirmed.",
+    waiting_other_side_meetup: "Waiting for the other side to accept your proposed time.",
+    store_order_no_cancel: "Store orders can't be cancelled here.",
+    handoff_already_confirmed: "The handoff was already confirmed, so this order can't be cancelled.",
+    meetup_agreed_ask_seller: "The meetup is already agreed. Ask the seller to cancel.",
+    only_buyer_can_rate: "Only the buyer can rate this seller.",
+    rate_after_delivery: "You can rate the seller once the order is delivered.",
+    already_rated: "You already rated this order.",
+    only_seller_can_rate_buyer: "Only the seller can rate this buyer.",
+    rate_buyer_after_delivery: "You can rate the buyer once the order is delivered.",
+    rate_seller_to_confirm: "Rate the seller to confirm the handoff.",
+    rate_buyer_to_confirm: "Rate the buyer to confirm the handoff.",
+    insufficient_credits: "You don't have enough credits for this withdrawal.",
+    notification_not_found: "Notification not found.",
+  } satisfies Record<ApiErrorCode, string | ((value: string) => string)>,
+
+  // Messages for native form validation (required fields, min/max, etc.).
+  validation: {
+    valueMissing: "Please fill out this field.",
+    selectMissing: "Please select an option.",
+    checkboxMissing: "Please check this box to continue.",
+    fileMissing: "Please select a file.",
+    emailMismatch: "Please enter a valid email address.",
+    urlMismatch: "Please enter a valid URL.",
+    numberBadInput: "Please enter a number.",
+    invalidValue: "Please enter a valid value.",
+    patternMismatch: "Please match the requested format.",
+    tooShort: (min: number, current: number) => `Please use at least ${min} characters (you are using ${current}).`,
+    tooLong: (max: number) => `Please use at most ${max} characters.`,
+    numberTooLow: (min: string) => `Value must be ${min} or more.`,
+    numberTooHigh: (max: string) => `Value must be ${max} or less.`,
+    dateTooEarly: (min: string) => `Choose ${min} or later.`,
+    dateTooLate: (max: string) => `Choose ${max} or earlier.`,
+  },
+
   rate: {
     title: (name: string) => `Rate ${name}`,
     howDidItGo: (title: string) => `How did buying “${title}” go?`,
+    howDidSellingGo: (title: string) => `How did selling “${title}” go?`,
     labels: ["", "Poor", "Fair", "Good", "Very good", "Excellent"],
     comment: "Comment (optional)",
     commentPlaceholder: "Was the item as described? Was pickup easy?",
+    buyerCommentPlaceholder: "Was the buyer on time? Was the handoff easy?",
     pickRating: "Pick a rating from 1 to 5 stars",
     error: "Could not save your rating",
     submit: "Submit rating",
+    requiredToConfirmSeller: "Rate the seller to confirm the handoff. Your rating is required.",
+    requiredToConfirmBuyer: "Rate the buyer to confirm the handoff. Your rating is required.",
+    submitAndConfirm: "Rate and confirm",
   },
 };
 

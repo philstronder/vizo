@@ -1,5 +1,16 @@
 import { pool } from "./pool";
 
+// Data the frontend needs to build the localized title and body.
+// `variant` picks between wordings of the same notification type.
+export interface NotificationParams {
+  listingTitle?: string;
+  actorName?: string;
+  amount?: number;
+  variant?: string;
+  buildingName?: string;
+  reason?: string; // why a proof of residency was rejected
+}
+
 export interface NotificationRow {
   id: string;
   user_id: string;
@@ -7,6 +18,7 @@ export interface NotificationRow {
   title: string;
   body: string;
   href: string | null;
+  params: NotificationParams | null;
   read: boolean;
   created_at: Date;
 }
@@ -18,6 +30,7 @@ export function toApiNotification(row: NotificationRow) {
     title: row.title,
     body: row.body,
     href: row.href ?? undefined,
+    params: row.params ?? undefined,
     read: row.read,
     createdAt: row.created_at.toISOString(),
   };
@@ -37,12 +50,13 @@ export interface CreateNotificationInput {
   title: string;
   body: string;
   href?: string;
+  params?: NotificationParams;
 }
 
 export async function createNotification(input: CreateNotificationInput): Promise<void> {
   await pool.query(
-    "INSERT INTO notifications (user_id, type, title, body, href) VALUES ($1, $2, $3, $4, $5)",
-    [input.userId, input.type, input.title, input.body, input.href ?? null]
+    "INSERT INTO notifications (user_id, type, title, body, href, params) VALUES ($1, $2, $3, $4, $5, $6)",
+    [input.userId, input.type, input.title, input.body, input.href ?? null, input.params ?? null]
   );
 }
 
